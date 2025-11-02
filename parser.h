@@ -11,6 +11,8 @@ typedef enum {
     NODE_IDENTIFIER,
     NODE_ASSIGNMENT,
     NODE_BINARY_OP,
+    NODE_COMPARE,
+    NODE_UNARY_OP
 } AstNodeType;
 
 typedef struct AstNode {
@@ -23,18 +25,26 @@ typedef struct AstNode {
         // For NODE_IDENTIFIER
         strview_t identifier_name;
 
-        // For NODE_ASSIGNMENT
         struct {
-            struct AstNode *identifier; // Left-hand side (LHS)
-            struct AstNode *expression; // Right-hand side (RHS)
+            struct AstNode *left;
+            struct AstNode *right;
         } assignment;
 
-        // For NODE_BINARY_OP
         struct {
             TokenType op; // The operator token type
             struct AstNode *left;
             struct AstNode *right;
         } binary_op;
+
+        struct {
+            TokenType op;
+            struct AstNode *left;
+            struct AstNode *right;
+        } compare_op;
+
+        struct {
+            struct AstNode *operand;
+        } unary_op;
     } data;
 
     // You could add line/column info here for error reporting

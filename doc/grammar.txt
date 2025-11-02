@@ -1,0 +1,21 @@
+ArgList     = Expr { "," Expr }
+
+Primary     = Ident
+            | Number
+            | "(" Expr ")"
+
+UnaryExpr   = [ "!" | "-" ] Primary
+
+AddExpr     = UnaryExpr { ("+" | "-") AddExpr }
+RelExpr     = AddExpr { ("==" | "!=") RelExpr }
+Assignment  = RelExpr [ "=" Assignment ]
+Expr        = Assignment
+
+ExprStmt    = [Expr] ";"
+
+ReturnStmt  = "return" [Expr] ";"
+
+Stmt        = ExprStmt
+            | ReturnStmt
+
+Program     = Stmt

@@ -1,6 +1,6 @@
 #include "parser.h"
 #include <stdio.h>
-#include <stdlib.h>
+
 
 static run_test(char const *source_code) {
     printf("--- Parsing Code: \"%s\" ---\n", source_code);
@@ -16,14 +16,7 @@ static run_test(char const *source_code) {
 }
 
 int main() {
-    // Test cases
-    run_test("x = ;10 + 5 * 2");
-    run_test("result = (a + b) / c - 7");
-    run_test("my_var = 100");
-    run_test("5 * (3 + 2)"); // Pure expression (not an assignment)
-    run_test("another_var = x + y * z");
-
-//    run_test("i32 i = 0;");
+    run_test("x = 10 + 5 == 2;");
 
     return 0;
 }

@@ -32,7 +32,9 @@ void tokenizer_init(char const *source_code) {
     current_token.type = TOKEN_EOF; // Or some initial invalid state
     current_token.lexeme = strview_empty();
     current_token.line = 1;
-    current_token.column = 1;
+    current_token.column = 0;
+
+    tokenizer_next_token(); // Get the first token
 }
 
 // Gets the next token from the input
@@ -71,7 +73,17 @@ bool tokenizer_next_token(void) {
     }
 
     switch (*c) {
-    case '=': current_token.type = TOKEN_ASSIGN; next_char(); break;
+    case ';': current_token.type = TOKEN_SEMICOLON; next_char(); break;
+    case '=':
+        if (c[1] == '=') {
+            current_token.type = TOKEN_EQUALS;
+            next_char();
+        }
+        else {
+            current_token.type = TOKEN_ASSIGN;
+        }
+        next_char();
+        break;
     case '+': current_token.type = TOKEN_PLUS; next_char(); break;
     case '-': current_token.type = TOKEN_MINUS; next_char(); break;
     case '*': current_token.type = TOKEN_MULTIPLY; next_char(); break;

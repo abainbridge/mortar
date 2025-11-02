@@ -10,7 +10,9 @@
 #include "tokenizer.h"
 
 
-bool g_is_valid;
+static bool g_is_valid;
+
+static AstNode *parse_expression(void);
 
 
 static void *set_error(void) {
@@ -31,120 +33,171 @@ static AstNode *create_ast_node(AstNodeType type) {
     return node;
 }
 
-// Grammar:
-// function_def -> 'fn' type '(' [params] ')' '{' statement* '}'
-// params       -> param (',' param)*
-// param        -> type identifier
-// statement    -> assignment | declaration | return ';'
-// assignment   -> IDENTIFIER = expression ';'
-// declaration  -> type identifier [ = expression ] ';'
-// expression   -> term ( ( '+' | '-' ) term )*
-// term         -> factor ( ( '*' | '/' ) factor )*
-// factor       -> NUMBER | IDENTIFIER | '(' expression ')'
+static AstNode *parse_primary(void) {
+    AstNode *rv = NULL;
 
-static AstNode *parse_expression();
-
-static AstNode *parse_factor() {
-    AstNode *node = NULL;
-    if (current_token.type == TOKEN_NUMBER) {
-        node = create_ast_node(NODE_NUMBER);
-        if (!strview_to_int(&current_token.lexeme, &node->data.int_value)) {
-            return report_error("Expected number but got", &current_token.lexeme);
+    if (current_token.type == TOKEN_LPAREN) {
+        if (!tokenizer_next_token()) goto error;
+        rv = parse_expression();
+        if (!rv) goto error;
+        if (current_token.type != TOKEN_RPAREN) {
+            report_error("Missing ). Got this instead: ", &current_token.lexeme);
+            goto error;
         }
-        if (!tokenizer_consume(TOKEN_NUMBER)) return set_error();
+        if (!tokenizer_next_token()) goto error;
+        return rv;
     }
-    else if (current_token.type == TOKEN_IDENTIFIER) {
-        node = create_ast_node(NODE_IDENTIFIER);
-        node->data.identifier_name = current_token.lexeme;
-        if (!tokenizer_consume(TOKEN_IDENTIFIER)) return set_error();
+
+    if (current_token.type == TOKEN_IDENTIFIER) {
+        rv = create_ast_node(NODE_IDENTIFIER);
+        rv->data.identifier_name = current_token.lexeme;
+        if (!tokenizer_next_token()) goto error;
+//         if (!lookup_identifier()) {
+//             report_error("Expected 
+//         }
+        return rv;
     }
-    else if (current_token.type == TOKEN_LPAREN) {
-        if (!tokenizer_consume(TOKEN_LPAREN)) return set_error();
-        node = parse_expression();
-        if (!tokenizer_consume(TOKEN_RPAREN)) return set_error();
+    else if (current_token.type == TOKEN_NUMBER) {
+        rv = create_ast_node(NODE_NUMBER);
+        if (!strview_to_int(&current_token.lexeme, &rv->data.int_value)) {
+            report_error("Expected number. Got this instead: ", &current_token.lexeme);
+            goto error;
+        }
+        if (!tokenizer_next_token()) goto error;
+        return rv;
     }
     else {
-        return report_error("Expected number, identifier, or '(' but got", 
-            &current_token.lexeme);
+        return report_error("Expected identifier or literal. Got this instead: ", &current_token.lexeme);
     }
 
-    return node;
+error:
+    parser_free_ast(rv);
+    return set_error();
 }
 
-static AstNode *parse_term() {
-    AstNode *node = parse_factor();
-    if (!g_is_valid) return NULL;
-    while (current_token.type == TOKEN_MULTIPLY || current_token.type == TOKEN_DIVIDE) {
-        AstNode *new_node = create_ast_node(NODE_BINARY_OP);
-        new_node->data.binary_op.op = current_token.type;
-        if (!tokenizer_consume(current_token.type)) // Consume '*' or '/'
-            return set_error();
-        new_node->data.binary_op.left = node;
-        new_node->data.binary_op.right = parse_factor();
-        if (!new_node->data.binary_op.right) return NULL;
-        node = new_node;
+static AstNode *parse_unary_expression(void) {
+    AstNode *rv = NULL;
+
+    if (current_token.type == TOKEN_EXCLAMATION || current_token.type == TOKEN_MINUS) {
+        if (!tokenizer_next_token()) goto error;
+        rv = create_ast_node(NODE_UNARY_OP);
+        rv->data.unary_op.operand = parse_unary_expression();
+        return rv;
     }
-    return node;
+
+    rv = parse_primary();
+    if (!rv) goto error;
+    return rv;
+
+error:
+    parser_free_ast(rv);
+    return set_error();
 }
 
-static AstNode *parse_expression() {
-    AstNode *node = parse_term();
-    if (!g_is_valid) return NULL;
-    while (current_token.type == TOKEN_PLUS || current_token.type == TOKEN_MINUS) {
-        AstNode *new_node = create_ast_node(NODE_BINARY_OP);
-        new_node->data.binary_op.op = current_token.type;
-        if (!tokenizer_consume(current_token.type)) // Consume '+' or '-'
-            return set_error();
-        new_node->data.binary_op.left = node;
-        new_node->data.binary_op.right = parse_term();
-        if (!new_node->data.binary_op.right) return NULL;
-        node = new_node;
+static AstNode *parse_add_expression(void) {
+    AstNode *right = NULL;
+    AstNode *left = parse_unary_expression();
+    if (!left) goto error;
+
+    if (current_token.type == TOKEN_PLUS || current_token.type == TOKEN_MINUS) {
+        AstNode *equals; // VS2013 insists I have to put this up here.
+
+        equals = create_ast_node(NODE_BINARY_OP);
+        equals->data.binary_op.op = current_token.type;
+        equals->data.binary_op.left = left;
+
+        if (!tokenizer_next_token()) goto error;
+        right = parse_add_expression();
+        if (!right) goto error;
+
+        equals->data.binary_op.right = right;
+        return equals;
     }
-    return node;
+
+    return left;
+
+error:
+    parser_free_ast(left);
+    parser_free_ast(right);
+    return set_error();
 }
 
-// assignment   -> IDENTIFIER = expression ';'
-static AstNode *parse_assignment() {
-    if (current_token.type == TOKEN_IDENTIFIER) {
-        Token potential_id = current_token;
-        if (!tokenizer_next_token()) { // Look ahead to see if it's an assignment
-            return set_error();
-        }
-        if (current_token.type == TOKEN_ASSIGN) {
-            AstNode *assign_node = create_ast_node(NODE_ASSIGNMENT);
-            assign_node->data.assignment.identifier = create_ast_node(NODE_IDENTIFIER);
-            assign_node->data.assignment.identifier->data.identifier_name = potential_id.lexeme;
+static AstNode *parse_compare_expression(void) {
+    AstNode *right = NULL;
+    AstNode *left = parse_add_expression();
+    if (!left) goto error;
 
-            if (!tokenizer_consume(TOKEN_ASSIGN)) {
-                return set_error();
-            }
+    if (current_token.type == TOKEN_EQUALS) {
+        AstNode *equals; // VS2013 insists I have to put this up here.
 
-            assign_node->data.assignment.expression = parse_expression();
-            if (!assign_node->data.assignment.expression) return NULL;
-            return assign_node;
-        }
-        else {
-            // It was just an identifier in an expression, not an assignment
-            // We need to put the identifier token back for parse_expression to handle
-            // (This is a simplified approach, a real parser might backtrack or have more robust lookahead)
-            current_token = potential_id; // "Put back" the token
-            // A more robust way would be to create a new token struct to store,
-            // or pass around a pointer to the current_token and its lexeme.
-            // For simplicity here, we'll assume next_token() correctly re-populates current_token.
-            // In a real scenario, you'd use a peek() function or a token buffer.
-            // For now, we'll just let parse_expression handle it.
-            return parse_expression(); // Re-parse from the identifier
-        }
+        equals = create_ast_node(NODE_COMPARE);
+        equals->data.compare_op.op = TOKEN_EQUALS;
+        equals->data.compare_op.left = left;
+
+        if (!tokenizer_next_token()) goto error;
+        right = parse_compare_expression();
+        if (!right) goto error;
+
+        equals->data.compare_op.right = right;
+        return equals;
     }
 
-    return parse_expression(); // If not an identifier, it must be an expression
+    return left;
+
+error:
+    parser_free_ast(left);
+    parser_free_ast(right);
+    return set_error();
+}
+
+static AstNode *parse_assign_expression(void) {
+    AstNode *right = NULL;
+
+    AstNode *left = parse_compare_expression();
+    if (!left) goto error;
+
+    if (current_token.type == TOKEN_ASSIGN) {
+        AstNode *assignment; // VS2013 insists I have to put this up here.
+        if (!tokenizer_next_token()) goto error;
+        right = parse_assign_expression();
+        if (!right) goto error;
+
+        assignment = create_ast_node(NODE_ASSIGNMENT);
+        assignment->data.assignment.left = left;
+        assignment->data.assignment.right = right;
+        return assignment;
+    }
+
+    return left;
+
+error:
+    parser_free_ast(left);
+    parser_free_ast(right);
+    return set_error();
+}
+
+static AstNode *parse_expression(void) {
+    return parse_assign_expression();
+}
+
+static AstNode *parse_expr_statement(void) {
+    AstNode *expr = parse_expression();
+    if (!expr) return NULL;
+
+    if (current_token.type != TOKEN_SEMICOLON || !tokenizer_next_token()) {
+        parser_free_ast(expr);
+        return report_error("Expected semicolon. Get this instead: ", &current_token.lexeme);
+    }
+
+    return expr;
 }
 
 AstNode *parser_parse(char const *source_code) {
     g_is_valid = true;
     tokenizer_init(source_code);
-    tokenizer_next_token(); // Get the first token
-    AstNode *root = parse_assignment(); // Try parsing as an assignment first
+
+    AstNode *root = parse_expr_statement(); // Try parsing as an assignment first
+
     if (g_is_valid) {
         tokenizer_consume(TOKEN_EOF); // Ensure we've consumed all input
     }
@@ -161,12 +214,16 @@ void parser_free_ast(AstNode *node) {
         // No dynamic memory
         break;
     case NODE_ASSIGNMENT:
-        parser_free_ast(node->data.assignment.identifier);
-        parser_free_ast(node->data.assignment.expression);
+        parser_free_ast(node->data.assignment.left);
+        parser_free_ast(node->data.assignment.right);
         break;
     case NODE_BINARY_OP:
         parser_free_ast(node->data.binary_op.left);
         parser_free_ast(node->data.binary_op.right);
+        break;
+    case NODE_COMPARE:
+        parser_free_ast(node->data.compare_op.left);
+        parser_free_ast(node->data.compare_op.right);
         break;
     }
     free(node);
@@ -195,10 +252,10 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         printf("ASSIGNMENT:\n");
         print_ast_indent(indent_level + 1);
         printf("LHS:\n");
-        parser_print_ast_node(node->data.assignment.identifier, indent_level + 2);
+        parser_print_ast_node(node->data.assignment.left, indent_level + 2);
         print_ast_indent(indent_level + 1);
         printf("RHS:\n");
-        parser_print_ast_node(node->data.assignment.expression, indent_level + 2);
+        parser_print_ast_node(node->data.assignment.right, indent_level + 2);
         break;
     case NODE_BINARY_OP:
         printf("BINARY_OP: ");
@@ -207,6 +264,19 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         case TOKEN_MINUS: printf("-\n"); break;
         case TOKEN_MULTIPLY: printf("*\n"); break;
         case TOKEN_DIVIDE: printf("/\n"); break;
+        default: printf("UNKNOWN_OP\n"); break;
+        }
+        print_ast_indent(indent_level + 1);
+        printf("Left:\n");
+        parser_print_ast_node(node->data.binary_op.left, indent_level + 2);
+        print_ast_indent(indent_level + 1);
+        printf("Right:\n");
+        parser_print_ast_node(node->data.binary_op.right, indent_level + 2);
+        break;
+    case NODE_COMPARE:
+        printf("COMPARE: ");
+        switch (node->data.compare_op.op) {
+        case TOKEN_EQUALS: printf("==\n"); break;
         default: printf("UNKNOWN_OP\n"); break;
         }
         print_ast_indent(indent_level + 1);
