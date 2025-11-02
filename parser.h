@@ -43,9 +43,10 @@ typedef struct AstNode {
         } compare_op;
 
         struct {
+            TokenType operator;
             struct AstNode *operand;
         } unary_op;
-    } data;
+    };
 
     // You could add line/column info here for error reporting
 } AstNode;

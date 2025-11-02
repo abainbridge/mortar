@@ -7,17 +7,17 @@
 typedef enum {
     TOKEN_EOF = 0,
     TOKEN_IDENTIFIER,
-    TOKEN_SEMICOLON,
     TOKEN_NUMBER,
-    TOKEN_ASSIGN,       // =
-    TOKEN_PLUS,         // +
-    TOKEN_MINUS,        // -
-    TOKEN_MULTIPLY,     // *
-    TOKEN_DIVIDE,       // /
-    TOKEN_EXCLAMATION,  // !
-    TOKEN_LPAREN,       // (
-    TOKEN_RPAREN,       // )
-    TOKEN_EQUALS,       // ==
+    TOKEN_SEMICOLON = ';',
+    TOKEN_ASSIGN = '=',
+    TOKEN_PLUS = '+',
+    TOKEN_MINUS = '-',
+    TOKEN_MULTIPLY = '*',
+    TOKEN_DIVIDE = '/',
+    TOKEN_EXCLAMATION = '!',
+    TOKEN_LPAREN = '(',
+    TOKEN_RPAREN = ')',
+    TOKEN_EQUALS // ==
 } TokenType;
 
 typedef struct {

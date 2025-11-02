@@ -22,7 +22,7 @@ static void *set_error(void) {
 
 static void *report_error(char const *msg, strview_t *sv) {
     fwrite(msg, strlen(msg), 1, stdout);
-    printf("'%.*s'. line=%d column=%d'\n", sv->len, sv->data, 
+    printf("'%.*s'. line=%d column=%d'\n", (int)sv->len, sv->data, 
         current_token.line, current_token.column);
     return set_error();
 }
@@ -50,7 +50,7 @@ static AstNode *parse_primary(void) {
 
     if (current_token.type == TOKEN_IDENTIFIER) {
         rv = create_ast_node(NODE_IDENTIFIER);
-        rv->data.identifier_name = current_token.lexeme;
+        rv->identifier_name = current_token.lexeme;
         if (!tokenizer_next_token()) goto error;
 //         if (!lookup_identifier()) {
 //             report_error("Expected 
@@ -59,7 +59,7 @@ static AstNode *parse_primary(void) {
     }
     else if (current_token.type == TOKEN_NUMBER) {
         rv = create_ast_node(NODE_NUMBER);
-        if (!strview_to_int(&current_token.lexeme, &rv->data.int_value)) {
+        if (!strview_to_int(&current_token.lexeme, &rv->int_value)) {
             report_error("Expected number. Got this instead: ", &current_token.lexeme);
             goto error;
         }
@@ -79,9 +79,10 @@ static AstNode *parse_unary_expression(void) {
     AstNode *rv = NULL;
 
     if (current_token.type == TOKEN_EXCLAMATION || current_token.type == TOKEN_MINUS) {
-        if (!tokenizer_next_token()) goto error;
         rv = create_ast_node(NODE_UNARY_OP);
-        rv->data.unary_op.operand = parse_unary_expression();
+        rv->unary_op.operator = current_token.type;
+        if (!tokenizer_next_token()) goto error;
+        rv->unary_op.operand = parse_unary_expression();
         return rv;
     }
 
@@ -103,14 +104,14 @@ static AstNode *parse_add_expression(void) {
         AstNode *equals; // VS2013 insists I have to put this up here.
 
         equals = create_ast_node(NODE_BINARY_OP);
-        equals->data.binary_op.op = current_token.type;
-        equals->data.binary_op.left = left;
+        equals->binary_op.op = current_token.type;
+        equals->binary_op.left = left;
 
         if (!tokenizer_next_token()) goto error;
         right = parse_add_expression();
         if (!right) goto error;
 
-        equals->data.binary_op.right = right;
+        equals->binary_op.right = right;
         return equals;
     }
 
@@ -131,14 +132,14 @@ static AstNode *parse_compare_expression(void) {
         AstNode *equals; // VS2013 insists I have to put this up here.
 
         equals = create_ast_node(NODE_COMPARE);
-        equals->data.compare_op.op = TOKEN_EQUALS;
-        equals->data.compare_op.left = left;
+        equals->compare_op.op = TOKEN_EQUALS;
+        equals->compare_op.left = left;
 
         if (!tokenizer_next_token()) goto error;
         right = parse_compare_expression();
         if (!right) goto error;
 
-        equals->data.compare_op.right = right;
+        equals->compare_op.right = right;
         return equals;
     }
 
@@ -163,8 +164,8 @@ static AstNode *parse_assign_expression(void) {
         if (!right) goto error;
 
         assignment = create_ast_node(NODE_ASSIGNMENT);
-        assignment->data.assignment.left = left;
-        assignment->data.assignment.right = right;
+        assignment->assignment.left = left;
+        assignment->assignment.right = right;
         return assignment;
     }
 
@@ -214,16 +215,19 @@ void parser_free_ast(AstNode *node) {
         // No dynamic memory
         break;
     case NODE_ASSIGNMENT:
-        parser_free_ast(node->data.assignment.left);
-        parser_free_ast(node->data.assignment.right);
+        parser_free_ast(node->assignment.left);
+        parser_free_ast(node->assignment.right);
         break;
     case NODE_BINARY_OP:
-        parser_free_ast(node->data.binary_op.left);
-        parser_free_ast(node->data.binary_op.right);
+        parser_free_ast(node->binary_op.left);
+        parser_free_ast(node->binary_op.right);
         break;
     case NODE_COMPARE:
-        parser_free_ast(node->data.compare_op.left);
-        parser_free_ast(node->data.compare_op.right);
+        parser_free_ast(node->compare_op.left);
+        parser_free_ast(node->compare_op.right);
+        break;
+    case NODE_UNARY_OP:
+        parser_free_ast(node->unary_op.operand);
         break;
     }
     free(node);
@@ -243,23 +247,23 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
     print_ast_indent(indent_level);
     switch (node->type) {
     case NODE_NUMBER:
-        printf("NUMBER: %d\n", node->data.int_value);
+        printf("NUMBER: %d\n", node->int_value);
         break;
     case NODE_IDENTIFIER:
-        printf("IDENTIFIER: %.*s\n", node->data.identifier_name.len, node->data.identifier_name.data);
+        printf("IDENTIFIER: %.*s\n", (int)node->identifier_name.len, node->identifier_name.data);
         break;
     case NODE_ASSIGNMENT:
         printf("ASSIGNMENT:\n");
         print_ast_indent(indent_level + 1);
         printf("LHS:\n");
-        parser_print_ast_node(node->data.assignment.left, indent_level + 2);
+        parser_print_ast_node(node->assignment.left, indent_level + 2);
         print_ast_indent(indent_level + 1);
         printf("RHS:\n");
-        parser_print_ast_node(node->data.assignment.right, indent_level + 2);
+        parser_print_ast_node(node->assignment.right, indent_level + 2);
         break;
     case NODE_BINARY_OP:
         printf("BINARY_OP: ");
-        switch (node->data.binary_op.op) {
+        switch (node->binary_op.op) {
         case TOKEN_PLUS: printf("+\n"); break;
         case TOKEN_MINUS: printf("-\n"); break;
         case TOKEN_MULTIPLY: printf("*\n"); break;
@@ -268,23 +272,27 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         }
         print_ast_indent(indent_level + 1);
         printf("Left:\n");
-        parser_print_ast_node(node->data.binary_op.left, indent_level + 2);
+        parser_print_ast_node(node->binary_op.left, indent_level + 2);
         print_ast_indent(indent_level + 1);
         printf("Right:\n");
-        parser_print_ast_node(node->data.binary_op.right, indent_level + 2);
+        parser_print_ast_node(node->binary_op.right, indent_level + 2);
         break;
     case NODE_COMPARE:
         printf("COMPARE: ");
-        switch (node->data.compare_op.op) {
+        switch (node->compare_op.op) {
         case TOKEN_EQUALS: printf("==\n"); break;
         default: printf("UNKNOWN_OP\n"); break;
         }
         print_ast_indent(indent_level + 1);
         printf("Left:\n");
-        parser_print_ast_node(node->data.binary_op.left, indent_level + 2);
+        parser_print_ast_node(node->binary_op.left, indent_level + 2);
         print_ast_indent(indent_level + 1);
         printf("Right:\n");
-        parser_print_ast_node(node->data.binary_op.right, indent_level + 2);
+        parser_print_ast_node(node->binary_op.right, indent_level + 2);
+        break;
+    case NODE_UNARY_OP:
+        printf("UNARY_OP: %c\n", node->unary_op.operator);
+        parser_print_ast_node(node->unary_op.operand, indent_level + 2);
         break;
     }
 }
