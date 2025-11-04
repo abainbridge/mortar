@@ -1,13 +1,14 @@
 // Own header
 #include "parser.h"
 
+// This project's headers
+#include "tokenizer.h"
+
 // Standard headers
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-// This project's headers
-#include "tokenizer.h"
 
 
 static bool g_is_valid;
@@ -33,6 +34,11 @@ static AstNode *create_ast_node(AstNodeType type) {
     return node;
 }
 
+static AstNode *parse_func_call(void) {
+    report_error("Func call not supported", &current_token.lexeme);
+    return NULL;
+}
+
 static AstNode *parse_primary(void) {
     AstNode *rv = NULL;
 
@@ -45,17 +51,21 @@ static AstNode *parse_primary(void) {
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
-        return rv;
     }
-
-    if (current_token.type == TOKEN_IDENTIFIER) {
-        rv = create_ast_node(NODE_IDENTIFIER);
-        rv->identifier_name = current_token.lexeme;
+    else if (current_token.type == TOKEN_IDENTIFIER) {
+        Token ident_token = current_token;
         if (!tokenizer_next_token()) goto error;
+
+        if (current_token.type == TOKEN_LPAREN) {
+            parse_func_call();
+        }
+        else {
+            rv = create_ast_node(NODE_IDENTIFIER);
+            rv->identifier_name = ident_token.lexeme;
+        }
 //         if (!lookup_identifier()) {
 //             report_error("Expected 
 //         }
-        return rv;
     }
     else if (current_token.type == TOKEN_NUMBER) {
         rv = create_ast_node(NODE_NUMBER);
@@ -64,11 +74,17 @@ static AstNode *parse_primary(void) {
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
-        return rv;
+    }
+    else if (current_token.type == TOKEN_STRING) {
+        rv = create_ast_node(NODE_STRING_LITERAL);
+        rv->string_literal = current_token.lexeme;
+        if (!tokenizer_next_token()) goto error;
     }
     else {
         return report_error("Expected identifier or literal. Got ", &current_token.lexeme);
     }
+
+    return rv;
 
 error:
     parser_free_ast(rv);
@@ -309,5 +325,10 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
             }
             break;
         }
+    case NODE_STRING_LITERAL:
+        printf("STRING: %.*s\n", node->string_literal.len, node->string_literal.data);
+        break;
+    default:
+        assert(0);
     }
 }

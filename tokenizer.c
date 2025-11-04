@@ -2,10 +2,17 @@
 #include "tokenizer.h"
 
 // Standard headers
-#include <ctype.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+
+// The standard ctype functions are not safe to use on char values. Make ones that are.
+bool is_digit(char x) { return x >= '0' && x <= '9'; }
+bool is_space(char x) { return x == ' ' || x == '\t' || x == '\n' || x == '\r'; }
+bool is_alpha(char x) { x |= 32; return (x >= 'a' && x <= 'z'); }
+bool is_alnum(char x) { return is_alpha(x) || is_digit(x); }
 
 
 static char const *input_code;
@@ -14,6 +21,7 @@ Token current_token;
 
 
 static void next_char(void) {
+    assert (*c != '\0');
     c++;
     if (*c == '\n')
         current_token.line++;
@@ -21,7 +29,7 @@ static void next_char(void) {
 }
 
 static void skip_whitespace(void) {
-    while (isspace(*c)) {
+    while (is_space(*c)) {
         next_char();
     }
 }
@@ -37,6 +45,27 @@ void tokenizer_init(char const *source_code) {
     tokenizer_next_token(); // Get the first token
 }
 
+static bool get_string(void) {
+    next_char();
+    char const *start_c = c;
+    while (*c != '"') {
+        if (*c == '\\') {
+            next_char();
+        }
+        if (*c == '\n' || *c == '\0') {
+            printf("Unterminated string at line %d, column %d\n",
+                current_token.line, current_token.column);
+            return false;
+        }
+        next_char();
+    }
+    int len = (int)(c - start_c);
+    next_char();
+    current_token.lexeme = strview_create(start_c, len);
+    current_token.type = TOKEN_STRING;
+    return true;
+}
+
 // Gets the next token from the input
 bool tokenizer_next_token(void) {
     skip_whitespace();
@@ -45,13 +74,13 @@ bool tokenizer_next_token(void) {
 
     if (*c == '\0') {
         current_token.type = TOKEN_EOF;
-        current_token.lexeme = strview_empty();
         return true;
     }
 
-    if (isdigit(*c)) {
+    if (is_digit(*c)) {
         char const *start_c = c;
-        while (isdigit(*c)) {
+        next_char();
+        while (is_digit(*c)) {
             next_char();
         }
         int length = (int)(c - start_c);
@@ -60,9 +89,10 @@ bool tokenizer_next_token(void) {
         return true;
     }
 
-    if (isalpha(*c) || *c == '_') {
+    if (is_alpha(*c) || *c == '_') {
         char const *start_c = c;
-        while (isalnum(*c) || *c == '_') {
+        next_char();
+        while (is_alnum(*c) || *c == '_') {
             next_char();
         }
         int length = (int)(c - start_c);
@@ -70,6 +100,10 @@ bool tokenizer_next_token(void) {
         current_token.type = TOKEN_IDENTIFIER;
         // Could check for keywords here (e.g., if, for, while)
         return true;
+    }
+
+    if (*c == '"') {
+        return get_string();
     }
 
     switch (*c) {
@@ -109,7 +143,7 @@ bool tokenizer_consume(TokenType expected_type) {
     char const *got = tokenizer_get_name_from_type(current_token.type);
     printf("Expected %s, but got %s ('%.*s') at line %d column %d\n",
         expected, got,
-        current_token.lexeme.len, current_token.lexeme.data,
+        (int)current_token.lexeme.len, current_token.lexeme.data,
         current_token.line, current_token.column);
     return false;
 }
@@ -119,12 +153,18 @@ char const *tokenizer_get_name_from_type(TokenType t) {
     case TOKEN_EOF: return "End of File";
     case TOKEN_IDENTIFIER: return "Identifier";
     case TOKEN_NUMBER: return "Number";
+    case TOKEN_STRING: return "String";
+    case TOKEN_EQUALS: return "==";
+    case TOKEN_SEMICOLON: return ";";
     case TOKEN_ASSIGN: return "Assignment";
     case TOKEN_PLUS: return "+";
     case TOKEN_MINUS: return "-";
     case TOKEN_MULTIPLY: return "*";
     case TOKEN_DIVIDE: return "/";
+    case TOKEN_EXCLAMATION: return "!";
     case TOKEN_LPAREN: return "(";
     case TOKEN_RPAREN: return ")";
     }
+
+    return "Unknown";
 }

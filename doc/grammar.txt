@@ -1,5 +1,6 @@
 Primary     = Ident
             | Number
+            | StringLiteral
             | "(" Expr ")"
 
 UnaryExpr   = [ "!" | "-" ] Primary
