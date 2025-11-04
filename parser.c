@@ -41,7 +41,7 @@ static AstNode *parse_primary(void) {
         rv = parse_expression();
         if (!rv) goto error;
         if (current_token.type != TOKEN_RPAREN) {
-            report_error("Missing ). Got this instead: ", &current_token.lexeme);
+            report_error("Expected ). Got ", &current_token.lexeme);
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
@@ -60,14 +60,14 @@ static AstNode *parse_primary(void) {
     else if (current_token.type == TOKEN_NUMBER) {
         rv = create_ast_node(NODE_NUMBER);
         if (!strview_to_int(&current_token.lexeme, &rv->int_value)) {
-            report_error("Expected number. Got this instead: ", &current_token.lexeme);
+            report_error("Expected number. Got ", &current_token.lexeme);
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
         return rv;
     }
     else {
-        return report_error("Expected identifier or literal. Got this instead: ", &current_token.lexeme);
+        return report_error("Expected identifier or literal. Got ", &current_token.lexeme);
     }
 
 error:
@@ -187,7 +187,7 @@ static AstNode *parse_expr_statement(void) {
 
     if (current_token.type != TOKEN_SEMICOLON || !tokenizer_next_token()) {
         parser_free_ast(expr);
-        return report_error("Expected semicolon. Get this instead: ", &current_token.lexeme);
+        return report_error("Expected semicolon. Got ", &current_token.lexeme);
     }
 
     return expr;
@@ -197,18 +197,18 @@ AstNode *parser_parse(char const *source_code) {
     g_is_valid = true;
     tokenizer_init(source_code);
 
-    AstNode *root = parse_expr_statement(); // Try parsing as an assignment first
-
-    if (g_is_valid) {
-        tokenizer_consume(TOKEN_EOF); // Ensure we've consumed all input
+    AstNode *root = create_ast_node(NODE_BLOCK);
+    while (g_is_valid && current_token.type != TOKEN_EOF) {
+        AstNode *statement = parse_expr_statement();
+        darray_insert(&root->block.statements, statement);
     }
+
     return root;
 }
 
 void parser_free_ast(AstNode *node) {
-    if (!node) {
-        return;
-    }
+    if (!node) return;
+
     switch (node->type) {
     case NODE_NUMBER:
     case NODE_IDENTIFIER:
@@ -229,7 +229,15 @@ void parser_free_ast(AstNode *node) {
     case NODE_UNARY_OP:
         parser_free_ast(node->unary_op.operand);
         break;
+    case NODE_BLOCK: {
+            for (unsigned i = 0; i < node->block.statements.size; i++) {
+                parser_free_ast(node->block.statements.data[i]);
+            }
+            darray_free(&node->block.statements);
+            break;
+        }
     }
+
     free(node);
 }
 
@@ -294,5 +302,12 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         printf("UNARY_OP: %c\n", node->unary_op.operator);
         parser_print_ast_node(node->unary_op.operand, indent_level + 2);
         break;
+    case NODE_BLOCK: {
+            printf("Block of %d statements\n", node->block.statements.size);
+            for (unsigned i = 0; i < node->block.statements.size; i++) {
+                parser_print_ast_node(node->block.statements.data[i], indent_level + 2);
+            }
+            break;
+        }
     }
 }

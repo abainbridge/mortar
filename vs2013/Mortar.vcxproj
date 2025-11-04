@@ -147,12 +147,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\darray.c" />
     <ClCompile Include="..\parser.c" />
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\strview.c" />
     <ClCompile Include="..\tokenizer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\darray.h" />
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\strview.h" />
     <ClInclude Include="..\tokenizer.h" />

@@ -1,5 +1,3 @@
-ArgList     = Expr { "," Expr }
-
 Primary     = Ident
             | Number
             | "(" Expr ")"
@@ -11,11 +9,6 @@ RelExpr     = AddExpr { ("==" | "!=") RelExpr }
 Assignment  = RelExpr [ "=" Assignment ]
 Expr        = Assignment
 
-ExprStmt    = [Expr] ";"
+Stmt        = Expr ";"
 
-ReturnStmt  = "return" [Expr] ";"
-
-Stmt        = ExprStmt
-            | ReturnStmt
-
-Program     = Stmt
+Program     = [ VarDecl | Stmt ]

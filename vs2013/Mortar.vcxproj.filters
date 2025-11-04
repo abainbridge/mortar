@@ -5,10 +5,12 @@
     <ClCompile Include="..\parser.c" />
     <ClCompile Include="..\tokenizer.c" />
     <ClCompile Include="..\strview.c" />
+    <ClCompile Include="..\darray.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\tokenizer.h" />
     <ClInclude Include="..\strview.h" />
+    <ClInclude Include="..\darray.h" />
   </ItemGroup>
 </Project>

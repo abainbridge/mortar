@@ -3,6 +3,8 @@
 
 #pragma once
 
+// Headers from this project
+#include "darray.h"
 #include "tokenizer.h"
 
 
@@ -12,7 +14,8 @@ typedef enum {
     NODE_ASSIGNMENT,
     NODE_BINARY_OP,
     NODE_COMPARE,
-    NODE_UNARY_OP
+    NODE_UNARY_OP,
+    NODE_BLOCK
 } AstNodeType;
 
 typedef struct AstNode {
@@ -46,6 +49,10 @@ typedef struct AstNode {
             TokenType operator;
             struct AstNode *operand;
         } unary_op;
+
+        struct {
+            darray_t statements; // Array stores pointers to AstNodes
+        } block;
     };
 
     // You could add line/column info here for error reporting
