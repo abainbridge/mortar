@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\darray.c" />
+    <ClCompile Include="..\hash_table.c" />
     <ClCompile Include="..\parser.c" />
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\strview.c" />
@@ -155,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\darray.h" />
+    <ClInclude Include="..\hash_table.h" />
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\strview.h" />
     <ClInclude Include="..\tokenizer.h" />

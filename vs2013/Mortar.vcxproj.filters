@@ -6,11 +6,13 @@
     <ClCompile Include="..\tokenizer.c" />
     <ClCompile Include="..\strview.c" />
     <ClCompile Include="..\darray.c" />
+    <ClCompile Include="..\hash_table.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\tokenizer.h" />
     <ClInclude Include="..\strview.h" />
     <ClInclude Include="..\darray.h" />
+    <ClInclude Include="..\hash_table.h" />
   </ItemGroup>
 </Project>
