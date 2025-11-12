@@ -21,10 +21,11 @@ static void *set_error(void) {
     return NULL;
 }
 
-static void *report_error(char const *msg, strview_t *sv) {
+static void *report_error(char const *msg, Token const *bad_token) {
     fwrite(msg, strlen(msg), 1, stdout);
-    printf("'%.*s'. line=%d column=%d'\n", (int)sv->len, sv->data, 
-        current_token.line, current_token.column);
+    printf("'%.*s'. line=%d column=%d'\n", 
+        (int)bad_token->lexeme.len, bad_token->lexeme.data, 
+        bad_token->line, bad_token->column);
     return set_error();
 }
 
@@ -34,8 +35,33 @@ static AstNode *create_ast_node(AstNodeType type) {
     return node;
 }
 
-static AstNode *parse_func_call(void) {
-    report_error("Func call not supported", &current_token.lexeme);
+static AstNode *parse_func_call(Token const *name) {
+    AstNode *rv = NULL;
+
+    if (strview_cmp_cstr(&name->lexeme, "puts")) {
+        if (!tokenizer_next_token()) goto error;
+
+        rv = calloc(1, sizeof(AstNode));
+        rv->type = NODE_FUNCTION_CALL;
+        rv->func_call.func_name = name->lexeme;
+        while (current_token.type != TOKEN_RPAREN) {
+            AstNode *expr = parse_expression();
+            darray_insert(&rv->func_call.parameters, expr);
+
+            if (current_token.type == TOKEN_COMMA) {
+                if (!tokenizer_next_token()) goto error;
+            }
+        }
+        tokenizer_next_token();
+        return rv;
+    }
+    else {
+        report_error("Unknown function ", name);
+        goto error;
+    }
+
+error:
+    parser_free_ast(rv);
     return NULL;
 }
 
@@ -47,7 +73,7 @@ static AstNode *parse_primary(void) {
         rv = parse_expression();
         if (!rv) goto error;
         if (current_token.type != TOKEN_RPAREN) {
-            report_error("Expected ). Got ", &current_token.lexeme);
+            report_error("Expected ). Got ", &current_token);
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
@@ -57,7 +83,7 @@ static AstNode *parse_primary(void) {
         if (!tokenizer_next_token()) goto error;
 
         if (current_token.type == TOKEN_LPAREN) {
-            parse_func_call();
+            rv = parse_func_call(&ident_token);
         }
         else {
             rv = create_ast_node(NODE_IDENTIFIER);
@@ -70,7 +96,7 @@ static AstNode *parse_primary(void) {
     else if (current_token.type == TOKEN_NUMBER) {
         rv = create_ast_node(NODE_NUMBER);
         if (!strview_to_int(&current_token.lexeme, &rv->int_value)) {
-            report_error("Expected number. Got ", &current_token.lexeme);
+            report_error("Expected number. Got ", &current_token);
             goto error;
         }
         if (!tokenizer_next_token()) goto error;
@@ -81,7 +107,7 @@ static AstNode *parse_primary(void) {
         if (!tokenizer_next_token()) goto error;
     }
     else {
-        return report_error("Expected identifier or literal. Got ", &current_token.lexeme);
+        return report_error("Expected identifier or literal. Got ", &current_token);
     }
 
     return rv;
@@ -203,7 +229,7 @@ static AstNode *parse_expr_statement(void) {
 
     if (current_token.type != TOKEN_SEMICOLON || !tokenizer_next_token()) {
         parser_free_ast(expr);
-        return report_error("Expected semicolon. Got ", &current_token.lexeme);
+        return report_error("Expected semicolon. Got ", &current_token);
     }
 
     return expr;
@@ -252,6 +278,9 @@ void parser_free_ast(AstNode *node) {
             darray_free(&node->block.statements);
             break;
         }
+    case NODE_FUNCTION_CALL:
+        darray_free(&node->func_call.parameters);
+        break;
     }
 
     free(node);
@@ -328,6 +357,12 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
     case NODE_STRING_LITERAL:
         printf("STRING: %.*s\n", node->string_literal.len, node->string_literal.data);
         break;
+    case NODE_FUNCTION_CALL:
+        printf("FUNCTION_CALL: %.*s\n", node->func_call.func_name.len, node->func_call.func_name.data);
+        for (unsigned i = 0; i < node->func_call.parameters.size; i++)
+            parser_print_ast_node(node->func_call.parameters.data[i], indent_level + 2);
+        break;
+
     default:
         assert(0);
     }

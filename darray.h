@@ -9,7 +9,7 @@
 typedef struct AstNode AstNode;
 
 typedef struct {
-    AstNode **data;       // The array
+    AstNode **data;       // The array. NULL if capacity is 0.
     unsigned size;        // Number of elements currently stored
     unsigned capacity;    // Max number of elements that can be stored
 } darray_t;

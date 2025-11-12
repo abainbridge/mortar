@@ -9,7 +9,9 @@ void darray_insert(darray_t* arr, AstNode* element) {
         if (arr->capacity == 0) {
             arr->capacity = 2;
         }
-        arr->capacity *= 2;
+        else {
+            arr->capacity *= 2;
+        }
         arr->data = realloc(arr->data, arr->capacity * sizeof(void*));
     }
 

@@ -18,7 +18,8 @@ typedef enum {
     TOKEN_DIVIDE = '/',
     TOKEN_EXCLAMATION = '!',
     TOKEN_LPAREN = '(',
-    TOKEN_RPAREN = ')'
+    TOKEN_RPAREN = ')',
+    TOKEN_COMMA = ',',
 } TokenType;
 
 typedef struct {

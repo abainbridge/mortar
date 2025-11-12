@@ -129,6 +129,7 @@ bool tokenizer_next_token(void) {
     case '/': current_token.type = TOKEN_DIVIDE; next_char(); break;
     case '(': current_token.type = TOKEN_LPAREN; next_char(); break;
     case ')': current_token.type = TOKEN_RPAREN; next_char(); break;
+    case ',': current_token.type = TOKEN_COMMA; next_char(); break;
     default:
         printf("Unexpected character '%c' at line %d, column %d\n", 
             *c, line, column);

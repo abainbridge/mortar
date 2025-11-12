@@ -16,7 +16,8 @@ typedef enum {
     NODE_COMPARE,
     NODE_UNARY_OP,
     NODE_BLOCK,
-    NODE_STRING_LITERAL
+    NODE_STRING_LITERAL,
+    NODE_FUNCTION_CALL
 } AstNodeType;
 
 typedef struct AstNode {
@@ -56,6 +57,11 @@ typedef struct AstNode {
         } block;
 
         strview_t string_literal;
+
+        struct {
+            strview_t func_name;
+            darray_t parameters; // Array stores pointers to AstNodes
+        } func_call;
     };
 
     // You could add line/column info here for error reporting

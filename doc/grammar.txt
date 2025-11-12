@@ -1,6 +1,19 @@
+EBNF:
+    [] optional
+    {} repetition, none or more
+
+-----------------
+
+VarDecl     = TypeName Ident
+ParamList   = VarDecl { "," VarDecl }
+FuncCall    = Ident "(" ParamList ")"
+
+StringLiteral = '"' [ anything other than '"' ] '"'
+
 Primary     = Ident
             | Number
             | StringLiteral
+            | FuncCall
             | "(" Expr ")"
 
 UnaryExpr   = [ "!" | "-" ] Primary
@@ -13,3 +26,35 @@ Expr        = Assignment
 Stmt        = Expr ";"
 
 Program     = [ VarDecl | Stmt ]
+
+---------
+
+puts("hello");
+
+---------
+
+i32 i = 0;
+while (i < 10) {
+    puts("*");
+    i = i + 1;
+}
+
+---------
+
+i32 i = 3;
+while (i < 100) {
+    i32 j = 3;
+    i32 is_prime = 1;
+    while j < i {
+        if i % j == 0 {
+            is_prime = 0;
+        }
+        j = j + 1;
+    }
+
+    if is_prime {
+        printf("%d\n", i);
+    }
+    
+    i = i + 2;
+}

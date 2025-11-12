@@ -17,7 +17,7 @@ static run_test(char const *source_code) {
 
 int main() {
 //    run_test("x = 10 + 5; x == 2;");
-    run_test("x = \"hello\";");
+    run_test("puts(\"hello\");");
 //    run_test("i32 x; x = 3; foo(x);");
 
     return 0;
