@@ -17,15 +17,18 @@ bool is_alnum(char x) { return is_alpha(x) || is_digit(x); }
 
 static char const *input_code;
 static char const *c;
+static unsigned line, column;
 Token current_token;
 
 
 static void next_char(void) {
     assert (*c != '\0');
     c++;
-    if (*c == '\n')
-        current_token.line++;
-    current_token.column++;
+    if (*c == '\n') {
+        line++;
+        column = 1;
+    }
+    column++;
 }
 
 static void skip_whitespace(void) {
@@ -39,8 +42,8 @@ void tokenizer_init(char const *source_code) {
     c = source_code;
     current_token.type = TOKEN_EOF; // Or some initial invalid state
     current_token.lexeme = strview_empty();
-    current_token.line = 1;
-    current_token.column = 0;
+    line = 1;
+    column = 1;
 
     tokenizer_next_token(); // Get the first token
 }
@@ -54,7 +57,7 @@ static bool get_string(void) {
         }
         if (*c == '\n' || *c == '\0') {
             printf("Unterminated string at line %d, column %d\n",
-                current_token.line, current_token.column);
+                line, column);
             return false;
         }
         next_char();
@@ -71,6 +74,8 @@ bool tokenizer_next_token(void) {
     skip_whitespace();
 
     current_token.lexeme = strview_empty();
+    current_token.line = line;
+    current_token.column = column;
 
     if (*c == '\0') {
         current_token.type = TOKEN_EOF;
@@ -126,7 +131,7 @@ bool tokenizer_next_token(void) {
     case ')': current_token.type = TOKEN_RPAREN; next_char(); break;
     default:
         printf("Unexpected character '%c' at line %d, column %d\n", 
-            *c, current_token.line, current_token.column);
+            *c, line, column);
         return false;
     }
 
@@ -144,7 +149,7 @@ bool tokenizer_consume(TokenType expected_type) {
     printf("Expected %s, but got %s ('%.*s') at line %d column %d\n",
         expected, got,
         (int)current_token.lexeme.len, current_token.lexeme.data,
-        current_token.line, current_token.column);
+        line, column);
     return false;
 }
 
