@@ -3,6 +3,13 @@
 #include <stdint.h>
 
 
+bool strview_cmp_cstr(strview_t const *a, char const *b) {
+    size_t b_len = strlen(b);
+    if (a->len != b_len)
+        return false;
+    return memcmp(a->data, b, a->len) == 0;
+}
+
 bool strview_to_int(strview_t *sv, int *out_value) {
     if (!sv || sv->len == 0)
         return false;

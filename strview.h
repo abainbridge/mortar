@@ -4,7 +4,6 @@
 
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,4 +33,11 @@ INLINE strview_t strview_empty(void) {
     return (strview_t){ "", 0 };
 }
 
+INLINE bool strview_cmp(strview_t const *a, strview_t const *b) {
+    if (a->len != b->len)
+        return false;
+    return memcmp(a->data, b->data, a->len) == 0;
+}
+
+bool strview_cmp_cstr(strview_t const *a, char const *b);
 bool strview_to_int(strview_t *sv, int *out_value);
