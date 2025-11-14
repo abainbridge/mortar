@@ -7,6 +7,7 @@
     <ClCompile Include="..\strview.c" />
     <ClCompile Include="..\darray.c" />
     <ClCompile Include="..\hash_table.c" />
+    <ClCompile Include="..\assembler.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\parser.h" />
@@ -14,5 +15,6 @@
     <ClInclude Include="..\strview.h" />
     <ClInclude Include="..\darray.h" />
     <ClInclude Include="..\hash_table.h" />
+    <ClInclude Include="..\assembler.h" />
   </ItemGroup>
 </Project>
