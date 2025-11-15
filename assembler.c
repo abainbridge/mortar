@@ -43,6 +43,26 @@ void asm_emit_stack_dealloc(uint8_t num_bytes) {
     g_assembler.binary_size += 4;
 }
 
+void asm_emit_push_reg(asm_reg_t src_reg) {
+    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
+    switch (src_reg) {
+    case REG_RAX: c[0] = 0x50; break;
+    case REG_RCX: c[0] = 0x51; break;
+    case REG_RDX: c[0] = 0x51; break;
+    }
+    g_assembler.binary_size += 1;
+}
+
+void asm_emit_pop_reg(asm_reg_t dst_reg) {
+    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
+    switch (dst_reg) {
+    case REG_RAX: c[0] = 0x58; break;
+    case REG_RCX: c[0] = 0x59; break;
+    case REG_RDX: c[0] = 0x5a; break;
+    }
+    g_assembler.binary_size += 1;
+}
+
 void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val) {
     uint8_t *c = g_assembler.binary + g_assembler.binary_size;
     c[0] = 0x48;
