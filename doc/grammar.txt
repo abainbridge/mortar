@@ -4,8 +4,8 @@ EBNF:
 
 -----------------
 
-VarDecl     = TypeName Ident
-ParamList   = VarDecl { "," VarDecl }
+Param       = Ident Ident
+ParamList   = Param { "," Param }
 FuncCall    = Ident "(" ParamList ")"
 
 StringLiteral = '"' [ anything other than '"' ] '"'
@@ -23,9 +23,17 @@ RelExpr     = AddExpr { ("==" | "!=") RelExpr }
 Assignment  = RelExpr [ "=" Assignment ]
 Expr        = Assignment
 
-Stmt        = Expr ";"
+ExprStmt    = Expr ";"
 
-Program     = [ VarDecl | Stmt ]
+VarDecl     = Ident Ident ";"
+
+CompoundStmt = "{" { VarDecl | Stmt } "}"
+
+WhileStmt   = "while" "(" Expression ")" Stmt
+
+Stmt        = ExprStmt | CompoundStmt | WhileStmt
+
+Program     = CompoundStmt
 
 ---------
 
@@ -33,7 +41,7 @@ puts("hello");
 
 ---------
 
-i32 i = 0;
+u64 i = 0;
 while (i < 10) {
     puts("*");
     i = i + 1;

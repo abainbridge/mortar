@@ -100,10 +100,10 @@ static void run_test(char const *source_code) {
 }
 
 int main() {
-//    run_test("x = 10 + 5; x == 2;");
-//    run_test("i32 x; x = 3; foo(x);");
+    run_test("u64 x; x = 3; foo(x);");
 
-    run_test("puts(\"hello\");");
+//    run_test("u64 i = 0; while (i < 10) { i = i + 1; }");
+//	  run_test("puts(\"hello\");");
 //    code_gen();
 
     return 0;

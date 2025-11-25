@@ -7,6 +7,7 @@
 #include "darray.h"
 #include "tokenizer.h"
 
+typedef struct _type_info_t type_info_t;
 
 typedef enum {
     NODE_NUMBER,
@@ -17,7 +18,8 @@ typedef enum {
     NODE_UNARY_OP,
     NODE_BLOCK,
     NODE_STRING_LITERAL,
-    NODE_FUNCTION_CALL
+    NODE_FUNCTION_CALL,
+    NODE_VARIABLE_DECLARATION
 } AstNodeType;
 
 typedef struct AstNode {
@@ -62,6 +64,11 @@ typedef struct AstNode {
             strview_t func_name;
             darray_t parameters; // Array stores pointers to AstNodes
         } func_call;
+
+        struct {
+            type_info_t *type_info;
+            strview_t identifier_name;
+        } var_decl;
     };
 
     // You could add line/column info here for error reporting

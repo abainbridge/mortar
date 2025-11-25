@@ -154,6 +154,7 @@
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\strview.c" />
     <ClCompile Include="..\tokenizer.c" />
+    <ClCompile Include="..\types.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\assembler.h" />
@@ -162,6 +163,7 @@
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\strview.h" />
     <ClInclude Include="..\tokenizer.h" />
+    <ClInclude Include="..\types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

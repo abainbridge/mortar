@@ -2,7 +2,9 @@
 #include "parser.h"
 
 // This project's headers
+#include "hash_table.h"
 #include "tokenizer.h"
+#include "types.h"
 
 // Standard headers
 #include <assert.h>
@@ -11,22 +13,42 @@
 #include <string.h>
 
 
-static bool g_is_valid;
-
 static AstNode *parse_expression(void);
 
 
-static void *set_error(void) {
-    g_is_valid = false;
-    return NULL;
-}
+// ### Error handling ###
+// 
+// When the parser encounters an error it:
+// * Stops parsing.
+// * Reports the error to the user.
+// * Leaves the AST in a consistent state - all AstNodes will be valid, but some
+//   will probably have null pointers because of the incomplete parsing.
+// * Frees any AstNodes it was in the middle of creating and hadn't been added to
+//   the AST.
+// 
+// Doing this requires the call stack of parser to unwind, with each function
+// propagating the error state to its caller.
+// 
+// Annoyingly the tokenizer reports errors too. So there's a lot of error
+// checking to do.
+// 
+// The rules for writing a parser function are:
+// 1. Every time you call another parse function or get next token, check for error.
+// 2. On error free everything you allocated and return null.
+// 3. Each parser function consumes all its tokens. ie current_token is left
+//    holding the token the next parser function will consume.
+
+
+// ***************************************************************************
+// Helper functions
+// ***************************************************************************
 
 static void *report_error(char const *msg, Token const *bad_token) {
     fwrite(msg, strlen(msg), 1, stdout);
     printf("'%.*s'. line=%d column=%d'\n", 
         (int)bad_token->lexeme.len, bad_token->lexeme.data, 
         bad_token->line, bad_token->column);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *create_ast_node(AstNodeType type) {
@@ -35,23 +57,29 @@ static AstNode *create_ast_node(AstNodeType type) {
     return node;
 }
 
+
+// ***************************************************************************
+// Parser functions that correspond to a grammar rule and AstNodeType
+// ***************************************************************************
+
 static AstNode *parse_func_call(Token const *name) {
     AstNode *rv = NULL;
 
     if (strview_cmp_cstr(&name->lexeme, "puts")) {
         if (!tokenizer_next_token()) goto error;
 
-        rv = calloc(1, sizeof(AstNode));
-        rv->type = NODE_FUNCTION_CALL;
+        rv = create_ast_node(NODE_FUNCTION_CALL);
         rv->func_call.func_name = name->lexeme;
         while (current_token.type != TOKEN_RPAREN) {
             AstNode *expr = parse_expression();
+            if (!expr) goto error;
             darray_insert(&rv->func_call.parameters, expr);
 
             if (current_token.type == TOKEN_COMMA) {
                 if (!tokenizer_next_token()) goto error;
             }
         }
+
         tokenizer_next_token();
         return rv;
     }
@@ -114,7 +142,7 @@ static AstNode *parse_primary(void) {
 
 error:
     parser_free_ast(rv);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *parse_unary_expression(void) {
@@ -134,7 +162,7 @@ static AstNode *parse_unary_expression(void) {
 
 error:
     parser_free_ast(rv);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *parse_add_expression(void) {
@@ -162,7 +190,7 @@ static AstNode *parse_add_expression(void) {
 error:
     parser_free_ast(left);
     parser_free_ast(right);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *parse_compare_expression(void) {
@@ -190,7 +218,7 @@ static AstNode *parse_compare_expression(void) {
 error:
     parser_free_ast(left);
     parser_free_ast(right);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *parse_assign_expression(void) {
@@ -216,7 +244,7 @@ static AstNode *parse_assign_expression(void) {
 error:
     parser_free_ast(left);
     parser_free_ast(right);
-    return set_error();
+    return NULL;
 }
 
 static AstNode *parse_expression(void) {
@@ -235,17 +263,70 @@ static AstNode *parse_expr_statement(void) {
     return expr;
 }
 
-AstNode *parser_parse(char const *source_code) {
-    g_is_valid = true;
-    tokenizer_init(source_code);
+AstNode *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
+    AstNode *node = NULL;
 
-    AstNode *root = create_ast_node(NODE_BLOCK);
-    while (g_is_valid && current_token.type != TOKEN_EOF) {
-        AstNode *statement = parse_expr_statement();
-        darray_insert(&root->block.statements, statement);
+    if (!type_info) {
+        type_info = hashtab_get(&g_types, &current_token.lexeme);
+        if (!type_info) {
+            return report_error("Undeclared type ", &current_token);
+        }
     }
 
-    return root;
+    if (!tokenizer_next_token()) return NULL;
+    if (current_token.type != TOKEN_IDENTIFIER)
+        return report_error("Expected identifier. Got ", &current_token);
+
+    node = create_ast_node(NODE_VARIABLE_DECLARATION);
+    node->var_decl.type_info = type_info;
+    node->var_decl.identifier_name = current_token.lexeme;
+
+    if (!tokenizer_next_token() || current_token.type != TOKEN_SEMICOLON)
+        goto error;
+
+    if (!tokenizer_next_token())
+        goto error;
+
+    return node;
+
+error:
+    parser_free_ast(node);
+    return NULL;
+}
+
+AstNode *parse_compound_statement(void) {
+    AstNode *compound_stmt = create_ast_node(NODE_BLOCK);
+    while (current_token.type != TOKEN_EOF) {
+        AstNode *node = NULL;
+
+        type_info_t *this_type = hashtab_get(&g_types, &current_token.lexeme);
+        if (this_type) {
+            // We've found a variable declaration.
+            node = parse_variable_declaration(this_type);
+        }
+        else {
+            // We must have an expression.
+            node = parse_expr_statement();
+        }
+        
+        if (!node) break;
+
+        darray_insert(&compound_stmt->block.statements, node);
+    }
+
+    return compound_stmt;
+}
+
+
+// ***************************************************************************
+// Public functions
+// ***************************************************************************
+
+AstNode *parser_parse(char const *source_code) {
+    types_init();
+    tokenizer_init(source_code);
+
+    return parse_compound_statement();
 }
 
 void parser_free_ast(AstNode *node) {
