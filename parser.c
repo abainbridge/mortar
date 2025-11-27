@@ -14,6 +14,7 @@
 
 
 static AstNode *parse_expression(void);
+static AstNode *parse_compound_statement(void);
 
 
 // ### Error handling ###
@@ -198,11 +199,11 @@ static AstNode *parse_compare_expression(void) {
     AstNode *left = parse_add_expression();
     if (!left) goto error;
 
-    if (current_token.type == TOKEN_EQUALS) {
+    if (current_token.type == TOKEN_EQUALS || current_token.type == TOKEN_NOT_EQUALS) {
         AstNode *equals; // VS2013 insists I have to put this up here.
 
         equals = create_ast_node(NODE_COMPARE);
-        equals->compare_op.op = TOKEN_EQUALS;
+        equals->compare_op.op = current_token.type;
         equals->compare_op.left = left;
 
         if (!tokenizer_next_token()) goto error;
@@ -221,7 +222,7 @@ error:
     return NULL;
 }
 
-static AstNode *parse_assign_expression(void) {
+static AstNode *parse_assignment(void) {
     AstNode *right = NULL;
 
     AstNode *left = parse_compare_expression();
@@ -230,7 +231,7 @@ static AstNode *parse_assign_expression(void) {
     if (current_token.type == TOKEN_ASSIGN) {
         AstNode *assignment; // VS2013 insists I have to put this up here.
         if (!tokenizer_next_token()) goto error;
-        right = parse_assign_expression();
+        right = parse_assignment();
         if (!right) goto error;
 
         assignment = create_ast_node(NODE_ASSIGNMENT);
@@ -248,7 +249,7 @@ error:
 }
 
 static AstNode *parse_expression(void) {
-    return parse_assign_expression();
+    return parse_assignment();
 }
 
 static AstNode *parse_expr_statement(void) {
@@ -263,7 +264,7 @@ static AstNode *parse_expr_statement(void) {
     return expr;
 }
 
-AstNode *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
+static AstNode *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
     AstNode *node = NULL;
 
     if (!type_info) {
@@ -281,8 +282,13 @@ AstNode *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {
     node->var_decl.type_info = type_info;
     node->var_decl.identifier_name = current_token.lexeme;
 
-    if (!tokenizer_next_token() || current_token.type != TOKEN_SEMICOLON)
+    if (!tokenizer_next_token())
         goto error;
+
+    if (current_token.type != TOKEN_SEMICOLON) {
+        report_error("Expected semicolon. Got ", &current_token);
+        goto error;
+    }
 
     if (!tokenizer_next_token())
         goto error;
@@ -294,9 +300,53 @@ error:
     return NULL;
 }
 
-AstNode *parse_compound_statement(void) {
-    AstNode *compound_stmt = create_ast_node(NODE_BLOCK);
-    while (current_token.type != TOKEN_EOF) {
+static AstNode *parse_while_stmt(void) {
+    assert(current_token.type == TOKEN_WHILE);
+
+    AstNode *node = create_ast_node(NODE_WHILE);
+    if (!tokenizer_next_token()) goto error;
+
+    if (current_token.type != TOKEN_LPAREN) {
+        report_error("Expected ( Got ", &current_token);
+        goto error;
+    }
+    if (!tokenizer_next_token()) goto error;
+
+    node->while_loop.condition_expr = parse_expression();
+    if (!node->while_loop.condition_expr) goto error;
+
+    if (current_token.type != TOKEN_RPAREN) {
+        report_error("Expected ) Got ", &current_token);
+        goto error;
+    }
+
+    if (!tokenizer_next_token()) goto error;
+    node->while_loop.block = parse_compound_statement();
+    return node;
+
+error:
+    parser_free_ast(node);
+    return NULL;
+}
+
+static AstNode *parse_statement(void) {
+    if (current_token.type == TOKEN_WHILE)
+        return parse_while_stmt();
+    else if (current_token.type == TOKEN_LPAREN)
+        return parse_compound_statement();
+    return parse_expr_statement();
+}
+
+static AstNode *parse_compound_statement(void) {
+    AstNode *compound_stmt = NULL;
+
+    if (current_token.type != TOKEN_LBRACE)
+        return report_error("Expected { Got ", &current_token);
+
+    if (!tokenizer_next_token()) return NULL;
+
+    compound_stmt = create_ast_node(NODE_BLOCK);
+    while (current_token.type != TOKEN_RBRACE) {
         AstNode *node = NULL;
 
         type_info_t *this_type = hashtab_get(&g_types, &current_token.lexeme);
@@ -305,16 +355,22 @@ AstNode *parse_compound_statement(void) {
             node = parse_variable_declaration(this_type);
         }
         else {
-            // We must have an expression.
-            node = parse_expr_statement();
+            // We must have a statement.
+            node = parse_statement();
         }
         
-        if (!node) break;
+        if (!node) goto error;
 
         darray_insert(&compound_stmt->block.statements, node);
     }
 
+    if (!tokenizer_next_token()) goto error;
+
     return compound_stmt;
+
+error:
+    parser_free_ast(compound_stmt);
+    return NULL;
 }
 
 
@@ -325,7 +381,6 @@ AstNode *parse_compound_statement(void) {
 AstNode *parser_parse(char const *source_code) {
     types_init();
     tokenizer_init(source_code);
-
     return parse_compound_statement();
 }
 
@@ -415,6 +470,7 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         printf("COMPARE: ");
         switch (node->compare_op.op) {
         case TOKEN_EQUALS: printf("==\n"); break;
+        case TOKEN_NOT_EQUALS: printf("!=\n"); break;
         default: printf("UNKNOWN_OP\n"); break;
         }
         print_ast_indent(indent_level + 1);
@@ -443,8 +499,19 @@ void parser_print_ast_node(AstNode *node, int indent_level) {
         for (unsigned i = 0; i < node->func_call.parameters.size; i++)
             parser_print_ast_node(node->func_call.parameters.data[i], indent_level + 2);
         break;
+    case NODE_VARIABLE_DECLARATION:
+        printf("VARIABLE DECL: %.*s, num_bytes=%d\n", 
+            node->var_decl.identifier_name.len, node->var_decl.identifier_name.data,
+            node->var_decl.type_info->num_bytes);
+        break;
+    case NODE_WHILE:
+        printf("WHILE LOOP:\n");
+        parser_print_ast_node(node->while_loop.condition_expr, indent_level + 2);
+        parser_print_ast_node(node->while_loop.block, indent_level + 2);
+        break;
 
     default:
+        printf("Don't know how to print node type %d\n", node->type);
         assert(0);
     }
 }

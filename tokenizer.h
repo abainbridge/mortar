@@ -10,6 +10,8 @@ typedef enum {
     TOKEN_NUMBER,
     TOKEN_STRING,
     TOKEN_EQUALS, // ==
+    TOKEN_NOT_EQUALS, // !=
+    TOKEN_WHILE,
     TOKEN_SEMICOLON = ';',
     TOKEN_ASSIGN = '=',
     TOKEN_PLUS = '+',
@@ -19,7 +21,11 @@ typedef enum {
     TOKEN_EXCLAMATION = '!',
     TOKEN_LPAREN = '(',
     TOKEN_RPAREN = ')',
+    TOKEN_LBRACE = '{',
+    TOKEN_RBRACE = '}',
     TOKEN_COMMA = ',',
+    TOKEN_LESS_THAN = '<',
+    TOKEN_GREATER_THAN = '>',
 } TokenType;
 
 typedef struct {

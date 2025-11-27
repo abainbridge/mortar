@@ -10,16 +10,17 @@
 typedef struct _type_info_t type_info_t;
 
 typedef enum {
-    NODE_NUMBER,
+    NODE_NUMBER = 0,
     NODE_IDENTIFIER,
-    NODE_ASSIGNMENT,
+    NODE_ASSIGNMENT = 2,
     NODE_BINARY_OP,
-    NODE_COMPARE,
+    NODE_COMPARE = 4,
     NODE_UNARY_OP,
-    NODE_BLOCK,
+    NODE_BLOCK = 6,
     NODE_STRING_LITERAL,
-    NODE_FUNCTION_CALL,
-    NODE_VARIABLE_DECLARATION
+    NODE_FUNCTION_CALL = 8,
+    NODE_VARIABLE_DECLARATION,
+    NODE_WHILE = 10
 } AstNodeType;
 
 typedef struct AstNode {
@@ -69,6 +70,11 @@ typedef struct AstNode {
             type_info_t *type_info;
             strview_t identifier_name;
         } var_decl;
+
+        struct {
+            struct AstNode *condition_expr;
+            struct AstNode *block;
+        } while_loop;
     };
 
     // You could add line/column info here for error reporting

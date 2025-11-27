@@ -102,13 +102,26 @@ bool tokenizer_next_token(void) {
         }
         int length = (int)(c - start_c);
         current_token.lexeme = strview_create(start_c, length);
-        current_token.type = TOKEN_IDENTIFIER;
-        // Could check for keywords here (e.g., if, for, while)
+        
+        if (strview_cmp_cstr(&current_token.lexeme, "while"))
+            current_token.type = TOKEN_WHILE;
+        else
+            current_token.type = TOKEN_IDENTIFIER;
         return true;
     }
 
-    if (*c == '"') {
+    if (*c == '"')
         return get_string();
+
+    if (*c == '!') {
+        next_char();
+        if (*c == '=') {
+            next_char();
+            current_token.type = TOKEN_NOT_EQUALS;
+            return true;
+        }
+
+        current_token.type = TOKEN_EXCLAMATION;
     }
 
     switch (*c) {
@@ -129,6 +142,10 @@ bool tokenizer_next_token(void) {
     case '/': current_token.type = TOKEN_DIVIDE; next_char(); break;
     case '(': current_token.type = TOKEN_LPAREN; next_char(); break;
     case ')': current_token.type = TOKEN_RPAREN; next_char(); break;
+    case '{': current_token.type = TOKEN_LBRACE; next_char(); break;
+    case '}': current_token.type = TOKEN_RBRACE; next_char(); break;
+    case '<': current_token.type = TOKEN_LESS_THAN; next_char(); break;
+    case '>': current_token.type = TOKEN_GREATER_THAN; next_char(); break;
     case ',': current_token.type = TOKEN_COMMA; next_char(); break;
     default:
         printf("Unexpected character '%c' at line %d, column %d\n", 
