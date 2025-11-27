@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 
-void darray_insert(darray_t* arr, AstNode* element) {
+void darray_insert(darray_t* arr, ast_node_t* element) {
     // Do we need to grow?
     if (arr->size == arr->capacity) {
         if (arr->capacity == 0) {

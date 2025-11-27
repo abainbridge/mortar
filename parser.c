@@ -13,8 +13,8 @@
 #include <string.h>
 
 
-static AstNode *parse_expression(void);
-static AstNode *parse_compound_statement(void);
+static ast_node_t *parse_expression(void);
+static ast_node_t *parse_compound_statement(void);
 
 
 // ### Error handling ###
@@ -52,8 +52,8 @@ static void *report_error(char const *msg, Token const *bad_token) {
     return NULL;
 }
 
-static AstNode *create_ast_node(AstNodeType type) {
-    AstNode *node = calloc(1, sizeof(AstNode));
+static ast_node_t *create_ast_node(ast_node_type_t type) {
+    ast_node_t *node = calloc(1, sizeof(ast_node_t));
     node->type = type;
     return node;
 }
@@ -63,8 +63,8 @@ static AstNode *create_ast_node(AstNodeType type) {
 // Parser functions that correspond to a grammar rule and AstNodeType
 // ***************************************************************************
 
-static AstNode *parse_func_call(Token const *name) {
-    AstNode *rv = NULL;
+static ast_node_t *parse_func_call(Token const *name) {
+    ast_node_t *rv = NULL;
 
     if (strview_cmp_cstr(&name->lexeme, "puts")) {
         if (!tokenizer_next_token()) goto error;
@@ -72,7 +72,7 @@ static AstNode *parse_func_call(Token const *name) {
         rv = create_ast_node(NODE_FUNCTION_CALL);
         rv->func_call.func_name = name->lexeme;
         while (current_token.type != TOKEN_RPAREN) {
-            AstNode *expr = parse_expression();
+            ast_node_t *expr = parse_expression();
             if (!expr) goto error;
             darray_insert(&rv->func_call.parameters, expr);
 
@@ -94,8 +94,8 @@ error:
     return NULL;
 }
 
-static AstNode *parse_primary(void) {
-    AstNode *rv = NULL;
+static ast_node_t *parse_primary(void) {
+    ast_node_t *rv = NULL;
 
     if (current_token.type == TOKEN_LPAREN) {
         if (!tokenizer_next_token()) goto error;
@@ -146,8 +146,8 @@ error:
     return NULL;
 }
 
-static AstNode *parse_unary_expression(void) {
-    AstNode *rv = NULL;
+static ast_node_t *parse_unary_expression(void) {
+    ast_node_t *rv = NULL;
 
     if (current_token.type == TOKEN_EXCLAMATION || current_token.type == TOKEN_MINUS) {
         rv = create_ast_node(NODE_UNARY_OP);
@@ -166,13 +166,13 @@ error:
     return NULL;
 }
 
-static AstNode *parse_add_expression(void) {
-    AstNode *right = NULL;
-    AstNode *left = parse_unary_expression();
+static ast_node_t *parse_add_expression(void) {
+    ast_node_t *right = NULL;
+    ast_node_t *left = parse_unary_expression();
     if (!left) goto error;
 
     if (current_token.type == TOKEN_PLUS || current_token.type == TOKEN_MINUS) {
-        AstNode *equals; // VS2013 insists I have to put this up here.
+        ast_node_t *equals; // VS2013 insists I have to put this up here.
 
         equals = create_ast_node(NODE_BINARY_OP);
         equals->binary_op.op = current_token.type;
@@ -194,13 +194,13 @@ error:
     return NULL;
 }
 
-static AstNode *parse_compare_expression(void) {
-    AstNode *right = NULL;
-    AstNode *left = parse_add_expression();
+static ast_node_t *parse_compare_expression(void) {
+    ast_node_t *right = NULL;
+    ast_node_t *left = parse_add_expression();
     if (!left) goto error;
 
     if (current_token.type == TOKEN_EQUALS || current_token.type == TOKEN_NOT_EQUALS) {
-        AstNode *equals; // VS2013 insists I have to put this up here.
+        ast_node_t *equals; // VS2013 insists I have to put this up here.
 
         equals = create_ast_node(NODE_COMPARE);
         equals->compare_op.op = current_token.type;
@@ -222,14 +222,14 @@ error:
     return NULL;
 }
 
-static AstNode *parse_assignment(void) {
-    AstNode *right = NULL;
+static ast_node_t *parse_assignment(void) {
+    ast_node_t *right = NULL;
 
-    AstNode *left = parse_compare_expression();
+    ast_node_t *left = parse_compare_expression();
     if (!left) goto error;
 
     if (current_token.type == TOKEN_ASSIGN) {
-        AstNode *assignment; // VS2013 insists I have to put this up here.
+        ast_node_t *assignment; // VS2013 insists I have to put this up here.
         if (!tokenizer_next_token()) goto error;
         right = parse_assignment();
         if (!right) goto error;
@@ -248,12 +248,12 @@ error:
     return NULL;
 }
 
-static AstNode *parse_expression(void) {
+static ast_node_t *parse_expression(void) {
     return parse_assignment();
 }
 
-static AstNode *parse_expr_statement(void) {
-    AstNode *expr = parse_expression();
+static ast_node_t *parse_expr_statement(void) {
+    ast_node_t *expr = parse_expression();
     if (!expr) return NULL;
 
     if (current_token.type != TOKEN_SEMICOLON || !tokenizer_next_token()) {
@@ -264,8 +264,8 @@ static AstNode *parse_expr_statement(void) {
     return expr;
 }
 
-static AstNode *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
-    AstNode *node = NULL;
+static ast_node_t *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
+    ast_node_t *node = NULL;
 
     if (!type_info) {
         type_info = hashtab_get(&g_types, &current_token.lexeme);
@@ -300,10 +300,10 @@ error:
     return NULL;
 }
 
-static AstNode *parse_while_stmt(void) {
+static ast_node_t *parse_while_stmt(void) {
     assert(current_token.type == TOKEN_WHILE);
 
-    AstNode *node = create_ast_node(NODE_WHILE);
+    ast_node_t *node = create_ast_node(NODE_WHILE);
     if (!tokenizer_next_token()) goto error;
 
     if (current_token.type != TOKEN_LPAREN) {
@@ -329,7 +329,7 @@ error:
     return NULL;
 }
 
-static AstNode *parse_statement(void) {
+static ast_node_t *parse_statement(void) {
     if (current_token.type == TOKEN_WHILE)
         return parse_while_stmt();
     else if (current_token.type == TOKEN_LPAREN)
@@ -337,8 +337,8 @@ static AstNode *parse_statement(void) {
     return parse_expr_statement();
 }
 
-static AstNode *parse_compound_statement(void) {
-    AstNode *compound_stmt = NULL;
+static ast_node_t *parse_compound_statement(void) {
+    ast_node_t *compound_stmt = NULL;
 
     if (current_token.type != TOKEN_LBRACE)
         return report_error("Expected { Got ", &current_token);
@@ -347,7 +347,7 @@ static AstNode *parse_compound_statement(void) {
 
     compound_stmt = create_ast_node(NODE_BLOCK);
     while (current_token.type != TOKEN_RBRACE) {
-        AstNode *node = NULL;
+        ast_node_t *node = NULL;
 
         type_info_t *this_type = hashtab_get(&g_types, &current_token.lexeme);
         if (this_type) {
@@ -378,13 +378,13 @@ error:
 // Public functions
 // ***************************************************************************
 
-AstNode *parser_parse(char const *source_code) {
+ast_node_t *parser_parse(char const *source_code) {
     types_init();
     tokenizer_init(source_code);
     return parse_compound_statement();
 }
 
-void parser_free_ast(AstNode *node) {
+void parser_free_ast(ast_node_t *node) {
     if (!node) return;
 
     switch (node->type) {
@@ -428,7 +428,7 @@ static void print_ast_indent(int indent_level) {
     }
 }
 
-void parser_print_ast_node(AstNode *node, int indent_level) {
+void parser_print_ast_node(ast_node_t *node, int indent_level) {
     if (!node) {
         return;
     }

@@ -8,7 +8,7 @@
 #include <string.h>
 
 
-typedef struct {
+typedef struct _strview_t {
     char const *data;
     size_t len;
 } strview_t;
