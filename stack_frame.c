@@ -50,3 +50,7 @@ unsigned sframe_get_variable_offset(strview_t *name) {
     FATAL_ERROR("Couldn't find storage offset for variable '%.*s'", name->len, name->data);
     return 0;
 }
+
+unsigned sframe_get_size(void) {
+    return g_sframe.current_offset;
+}

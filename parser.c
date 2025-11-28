@@ -116,7 +116,7 @@ static ast_node_t *parse_primary(void) {
         }
         else {
             rv = create_ast_node(NODE_IDENTIFIER);
-            rv->identifier_name = ident_token.lexeme;
+            rv->identifier.name = ident_token.lexeme;
         }
 //         if (!lookup_identifier()) {
 //             report_error("Expected 
@@ -124,7 +124,7 @@ static ast_node_t *parse_primary(void) {
     }
     else if (current_token.type == TOKEN_NUMBER) {
         rv = create_ast_node(NODE_NUMBER);
-        if (!strview_to_int(&current_token.lexeme, &rv->int_value)) {
+        if (!strview_to_int(&current_token.lexeme, &rv->number.int_value)) {
             report_error("Expected number. Got ", &current_token);
             goto error;
         }
@@ -132,7 +132,7 @@ static ast_node_t *parse_primary(void) {
     }
     else if (current_token.type == TOKEN_STRING) {
         rv = create_ast_node(NODE_STRING_LITERAL);
-        rv->string_literal = current_token.lexeme;
+        rv->string_literal.val = current_token.lexeme;
         if (!tokenizer_next_token()) goto error;
     }
     else {
@@ -436,10 +436,10 @@ void parser_print_ast_node(ast_node_t *node, int indent_level) {
     print_ast_indent(indent_level);
     switch (node->type) {
     case NODE_NUMBER:
-        printf("NUMBER: %d\n", node->int_value);
+        printf("NUMBER: %d\n", node->number.int_value);
         break;
     case NODE_IDENTIFIER:
-        printf("IDENTIFIER: %.*s\n", (int)node->identifier_name.len, node->identifier_name.data);
+        printf("IDENTIFIER: %.*s\n", (int)node->identifier.name.len, node->identifier.name.data);
         break;
     case NODE_ASSIGNMENT:
         printf("ASSIGNMENT:\n");
@@ -492,7 +492,7 @@ void parser_print_ast_node(ast_node_t *node, int indent_level) {
             break;
         }
     case NODE_STRING_LITERAL:
-        printf("STRING: %.*s\n", node->string_literal.len, node->string_literal.data);
+        printf("STRING: %.*s\n", node->string_literal.val.len, node->string_literal.val.data);
         break;
     case NODE_FUNCTION_CALL:
         printf("FUNCTION_CALL: %.*s\n", node->func_call.func_name.len, node->func_call.func_name.data);

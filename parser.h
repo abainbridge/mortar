@@ -27,11 +27,13 @@ typedef struct _ast_node_t {
     ast_node_type_t type;
 
     union {
-        // For NODE_NUMBER
-        int int_value;
+        struct {
+            int int_value;
+        } number;
 
-        // For NODE_IDENTIFIER
-        strview_t identifier_name;
+        struct {
+            strview_t name;
+        } identifier;
 
         struct {
             struct _ast_node_t *left;
@@ -59,7 +61,9 @@ typedef struct _ast_node_t {
             darray_t statements; // Array stores pointers to AstNodes
         } block;
 
-        strview_t string_literal;
+        struct {
+            strview_t val;
+        } string_literal;
 
         struct {
             strview_t func_name;
