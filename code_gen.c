@@ -3,6 +3,7 @@
 
 // This project's headers
 #include "assembler.h"
+#include "common.h"
 #include "parser.h"
 #include "stack_frame.h"
 #include "types.h"
@@ -36,6 +37,39 @@ static void gen_assignment(ast_node_t *node) {
     asm_emit_mov_reg_to_stack(REG_RAX, offset);
 }
 
+static void gen_binary_op(ast_node_t *node) {
+    gen_node(node->binary_op.left);
+    gen_node(node->binary_op.right);
+    asm_emit_pop_reg(REG_RAX); // LHS in RAX
+    asm_emit_pop_reg(REG_RCX); // RHS in RCX
+
+    switch (node->binary_op.op) {
+    case TOKEN_PLUS:
+        asm_emit_arithmetic(REG_RAX, REG_RCX, node->binary_op.op);
+        break;
+    default:
+        printf("Unknown binary op\n");
+        DBG_BREAK();
+    }
+
+    asm_emit_push_reg(REG_RAX);
+}
+
+// This function is only used to read from an identifier.
+static void gen_identifier(ast_node_t *node) {
+    unsigned offset = sframe_get_variable_offset(&node->identifier.name);
+    asm_emit_mov_stack_to_reg(REG_RAX, offset);
+    asm_emit_push_reg(REG_RAX);
+}
+
+static void gen_compare(ast_node_t *node) {
+    gen_node(node->compare_op.left);
+    gen_node(node->compare_op.right);
+    asm_emit_pop_reg(REG_RAX); // LHS in RAX
+    asm_emit_pop_reg(REG_RCX); // RHS in RCX
+    asm_emit_cmp_imm(REG_RAX, REG_RCX);
+}
+
 static void gen_block(ast_node_t *node) {
     for (unsigned i = 0; i < node->block.statements.size; i++) {
         gen_node(node->block.statements.data[i]);
@@ -44,7 +78,7 @@ static void gen_block(ast_node_t *node) {
 
 static void gen_string_literal(ast_node_t *node) {
     // Put string_addr in rax
-    asm_emit_mov_imm_64(REG_RAX, (uint64_t)node->string_literal.val.data);
+    asm_emit_mov_imm_64(REG_RAX, (uint64_t)"Hello");// node->string_literal.val.data);
 
     // Write address of literal to stack
     asm_emit_push_reg(REG_RAX);
@@ -74,13 +108,25 @@ static void gen_function_call(ast_node_t *node) {
 
     // Deallocate the stack shadow space
     asm_emit_stack_dealloc(32);
-
-    // Emit ret
-    asm_emit_ret();
 }
 
 static void gen_variable_declaration(ast_node_t *node) {
     sframe_add_variable(&node->var_decl.identifier_name, node->var_decl.type_info->num_bytes);
+}
+
+static void gen_while_loop(ast_node_t *node) {
+    unsigned start_of_condition = g_assembler.binary_size;
+    
+    gen_node(node->while_loop.condition_expr);
+
+    unsigned jeq_end_offset = g_assembler.binary_size;
+    asm_emit_je(0);
+
+    gen_block(node->while_loop.block);
+
+    asm_emit_jmp_imm(start_of_condition);
+
+    asm_patch_je(jeq_end_offset, g_assembler.binary_size);
 }
 
 static void gen_node(ast_node_t *node) {
@@ -88,8 +134,17 @@ static void gen_node(ast_node_t *node) {
     case NODE_NUMBER:
         asm_emit_push_imm_64(node->number.int_value);
         break;
+    case NODE_IDENTIFIER:
+        gen_identifier(node);
+        break;
     case NODE_ASSIGNMENT:
         gen_assignment(node);
+        break;
+    case NODE_BINARY_OP:
+        gen_binary_op(node);
+        break;
+    case NODE_COMPARE:
+        gen_compare(node);
         break;
     case NODE_BLOCK:
         gen_block(node);
@@ -103,9 +158,12 @@ static void gen_node(ast_node_t *node) {
     case NODE_VARIABLE_DECLARATION:
         gen_variable_declaration(node);
         break;
+    case NODE_WHILE:
+        gen_while_loop(node);
+        break;
     default:
         printf("gen_node() unknown type\n");
-        assert(0);
+        DBG_BREAK();
     }
 }
 

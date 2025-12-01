@@ -30,14 +30,15 @@ static void run_test(char const *source_code) {
 }
 
 int main() {
-    run_test("{ u64 x; x = 3; u64 y; y = 7; }");
-//     run_test(
-//         "{"
-//         "   u64 i; i = 0;"
-//         "   while (i != 10) {"
-//         "       i = i + 1;"
-//         "   }"
-//         "}");
+//    run_test("{ u64 x; x = 3; u64 y; y = 7; }");
+    run_test(
+        "{"
+        "   u64 i; i = 0;"
+        "   while (i != 3) {"
+        "       puts(\"Hello\");"
+        "       i = i + 1;"
+        "   }"
+        "}");
 //	  run_test("puts(\"hello\");");
 
     return 0;
