@@ -151,6 +151,7 @@
     <ClCompile Include="..\code_gen.c" />
     <ClCompile Include="..\darray.c" />
     <ClCompile Include="..\hash_table.c" />
+    <ClCompile Include="..\lexical_scope.c" />
     <ClCompile Include="..\parser.c" />
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\stack_frame.c" />
@@ -164,6 +165,7 @@
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\darray.h" />
     <ClInclude Include="..\hash_table.h" />
+    <ClInclude Include="..\lexical_scope.h" />
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\stack_frame.h" />
     <ClInclude Include="..\strview.h" />

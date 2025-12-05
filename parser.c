@@ -3,6 +3,7 @@
 
 // This project's headers
 #include "hash_table.h"
+#include "lexical_scope.h"
 #include "tokenizer.h"
 #include "types.h"
 
@@ -115,6 +116,8 @@ static ast_node_t *parse_primary(void) {
             rv = parse_func_call(&ident_token);
         }
         else {
+            if (!lscope_contains(&ident_token.lexeme))
+                return report_error("Unknown identifier ", &ident_token);
             rv = create_ast_node(NODE_IDENTIFIER);
             rv->identifier.name = ident_token.lexeme;
         }
@@ -278,6 +281,10 @@ static ast_node_t *parse_variable_declaration(type_info_t *type_info /* can be N
     if (current_token.type != TOKEN_IDENTIFIER)
         return report_error("Expected identifier. Got ", &current_token);
 
+    if (lscope_contains(&current_token.lexeme))
+        return report_error("Duplicate declaration of variable ", &current_token);
+    lscope_add(&current_token.lexeme);
+
     node = create_ast_node(NODE_VARIABLE_DECLARATION);
     node->var_decl.type_info = type_info;
     node->var_decl.identifier_name = current_token.lexeme;
@@ -379,6 +386,7 @@ error:
 // ***************************************************************************
 
 ast_node_t *parser_parse(char const *source_code) {
+    lscope_init();
     types_init();
     tokenizer_init(source_code);
     return parse_compound_statement();
