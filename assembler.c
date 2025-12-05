@@ -109,7 +109,7 @@ void asm_emit_push_reg(asm_reg_t src_reg) {
     switch (src_reg) {
     case REG_RAX: c[0] = 0x50; break;
     case REG_RCX: c[0] = 0x51; break;
-    case REG_RDX: c[0] = 0x51; break;
+    case REG_RDX: c[0] = 0x52; break;
     }
     g_assembler.binary_size += 1;
 }
