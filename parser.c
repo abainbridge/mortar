@@ -116,7 +116,7 @@ static ast_node_t *parse_primary(void) {
             rv = parse_func_call(&ident_token);
         }
         else {
-            if (!lscope_contains(&ident_token.lexeme))
+            if (!lscope_get(&ident_token.lexeme))
                 return report_error("Unknown identifier ", &ident_token);
             rv = create_ast_node(NODE_IDENTIFIER);
             rv->identifier.name = ident_token.lexeme;
@@ -281,9 +281,9 @@ static ast_node_t *parse_variable_declaration(type_info_t *type_info /* can be N
     if (current_token.type != TOKEN_IDENTIFIER)
         return report_error("Expected identifier. Got ", &current_token);
 
-    if (lscope_contains(&current_token.lexeme))
+    if (lscope_get(&current_token.lexeme))
         return report_error("Duplicate declaration of variable ", &current_token);
-    lscope_add(&current_token.lexeme);
+    lscope_add(&current_token.lexeme, type_info);
 
     node = create_ast_node(NODE_VARIABLE_DECLARATION);
     node->var_decl.type_info = type_info;

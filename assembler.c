@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
 
@@ -109,7 +110,6 @@ void asm_emit_push_reg(asm_reg_t src_reg) {
     switch (src_reg) {
     case REG_RAX: c[0] = 0x50; break;
     case REG_RCX: c[0] = 0x51; break;
-    case REG_RDX: c[0] = 0x52; break;
     }
     g_assembler.binary_size += 1;
 }
@@ -119,7 +119,6 @@ void asm_emit_pop_reg(asm_reg_t dst_reg) {
     switch (dst_reg) {
     case REG_RAX: c[0] = 0x58; break;
     case REG_RCX: c[0] = 0x59; break;
-    case REG_RDX: c[0] = 0x5a; break;
     }
     g_assembler.binary_size += 1;
 }
@@ -156,37 +155,46 @@ void asm_emit_push_imm_64(int64_t val) {
 
 void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset) {
     uint8_t *c = g_assembler.binary + g_assembler.binary_size;
-    c[0] = 0x48; // Prefix for 64-bit operation
-    c[1] = 0x89; // Move reg to memory/register
-
-    c[2] = 0x45;
-    // Bits 7-6: Dst is address from register with 8-bit displacement
-    // Bits 5-3: Src reg (init to zero)
-    // Bits 2-0: Dst address is from register RBP
-
-    switch (src_reg) {
-    case REG_RAX: break;
-    case REG_RCX: c[2] |= 1 << 3; break;
-    case REG_RDX: c[2] |= 2 << 3; break;
-    }
-
     int64_t neg_stack_offset = -((int64_t)stack_offset);
     if (!fits_in_s8(neg_stack_offset))
         DBG_BREAK();
-    c[3] = (uint8_t)neg_stack_offset;
 
-    g_assembler.binary_size += 4;
+    switch (src_reg) {
+    case REG_RAX:
+    case REG_RCX:
+        c[0] = 0x48; // Prefix for 64-bit operation
+        c[1] = 0x89; // Move reg to memory/register
+        c[2] = 0x45 + (src_reg << 3);
+        c[3] = (uint8_t)neg_stack_offset;
+        g_assembler.binary_size += 4;
+        break;
+    case REG_AL:
+        c[0] = 0x88;
+        c[1] = 0x45;
+        c[2] = (uint8_t)neg_stack_offset;
+        g_assembler.binary_size += 3;
+    }
 }
 
 void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset) {
     uint8_t *c = g_assembler.binary + g_assembler.binary_size;
-    c[0] = 0x48; // Prefix for 64-bit operation
-    c[1] = 0x8b; // Move memory/register to register
-    c[2] = 0x45; // Mod=01, Reg=000 (RAX), R/M=101 (RBP)
-
     int64_t neg_stack_offset = -((int64_t)stack_offset);
     if (!fits_in_s8(neg_stack_offset))
         DBG_BREAK();
+
+    if (dst_reg == REG_AL) {
+        // Copy 8-bit value from stack to 64-bit register (Dest is RAX not AL)
+        c[0] = 0xf;
+        c[1] = 0xb6;
+        c[2] = 0x45;
+    }
+    else {
+        // Copy 64-bit value from stack to 64-bit register
+        c[0] = 0x48; // Prefix for 64-bit operation
+        c[1] = 0x8b; // Move memory/register to register
+        c[2] = 0x45; // Mod=01, Reg=000 (RAX), R/M=101 (RBP)
+    }
+
     c[3] = (uint8_t)neg_stack_offset;
 
     g_assembler.binary_size += 4;
@@ -199,7 +207,6 @@ void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val) {
     switch (dst_reg) {
     case REG_RAX: c[1] = 0xb8; break;
     case REG_RCX: c[1] = 0xb9; break;
-    case REG_RDX: c[1] = 0xba; break;
     }
 
     memcpy(c + 2, &val, 8);

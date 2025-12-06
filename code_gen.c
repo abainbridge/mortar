@@ -4,6 +4,7 @@
 // This project's headers
 #include "assembler.h"
 #include "common.h"
+#include "lexical_scope.h"
 #include "parser.h"
 #include "stack_frame.h"
 #include "types.h"
@@ -16,7 +17,8 @@
 
 // Expression evaluation is done in the most brain-dead way possible. Each
 // operation reads its inputs from the stack, does the operation and writes
-// the result back to the stack.
+// the result back to the stack. Everything is promoted to u64 before use
+// in the expression evaluation.
 
 
 static void gen_node(ast_node_t *node);
@@ -33,8 +35,17 @@ static void gen_assignment(ast_node_t *node) {
     assert(left->type == NODE_IDENTIFIER);
     unsigned offset = sframe_get_variable_offset(&left->identifier.name);
 
-    // Copy RAX to that address on the stack.
-    asm_emit_mov_reg_to_stack(REG_RAX, offset);
+    // Get type of LHS
+    type_info_t *type = lscope_get(&left->identifier.name);
+    assert(type);
+
+    // Copy RAX or AL to that address on the stack.
+    if (type->num_bytes == 1) {
+        asm_emit_mov_reg_to_stack(REG_AL, offset);
+    }
+    else {
+        asm_emit_mov_reg_to_stack(REG_RAX, offset);
+    }
 }
 
 static void gen_binary_op(ast_node_t *node) {
@@ -57,8 +68,13 @@ static void gen_binary_op(ast_node_t *node) {
 
 // This function is only used to read from an identifier.
 static void gen_identifier(ast_node_t *node) {
+    type_info_t *type = lscope_get(&node->identifier.name);
+    assert(type);
     unsigned offset = sframe_get_variable_offset(&node->identifier.name);
-    asm_emit_mov_stack_to_reg(REG_RAX, offset);
+    if (type->num_bytes == 1)
+        asm_emit_mov_stack_to_reg(REG_AL, offset);
+    else
+        asm_emit_mov_stack_to_reg(REG_RAX, offset);
     asm_emit_push_reg(REG_RAX);
 }
 

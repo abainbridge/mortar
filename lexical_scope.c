@@ -7,17 +7,15 @@
 
 static hashtab_t g_lscope;
 
-#define EMPTY_ENTRY ((void*)1)
 
 void lscope_init(void) {
     g_lscope = hashtab_create();
 }
 
-void lscope_add(strview_t *identifier) {
-    hashtab_put(&g_lscope, identifier, EMPTY_ENTRY);
+void lscope_add(strview_t *identifier, type_info_t *type) {
+    hashtab_put(&g_lscope, identifier, type);
 }
 
-bool lscope_contains(strview_t *identifier) {
-    void *val = hashtab_get(&g_lscope, identifier);
-    return val == EMPTY_ENTRY;
+type_info_t *lscope_get(strview_t *identifier) {
+    return hashtab_get(&g_lscope, identifier);
 }
