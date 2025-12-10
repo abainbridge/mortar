@@ -12,6 +12,7 @@
     <ClCompile Include="..\stack_frame.c" />
     <ClCompile Include="..\code_gen.c" />
     <ClCompile Include="..\lexical_scope.c" />
+    <ClCompile Include="..\time.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\parser.h" />
@@ -25,5 +26,6 @@
     <ClInclude Include="..\stack_frame.h" />
     <ClInclude Include="..\code_gen.h" />
     <ClInclude Include="..\lexical_scope.h" />
+    <ClInclude Include="..\time.h" />
   </ItemGroup>
 </Project>

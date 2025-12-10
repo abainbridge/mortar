@@ -156,6 +156,7 @@
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\stack_frame.c" />
     <ClCompile Include="..\strview.c" />
+    <ClCompile Include="..\time.c" />
     <ClCompile Include="..\tokenizer.c" />
     <ClCompile Include="..\types.c" />
   </ItemGroup>
@@ -169,6 +170,7 @@
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\stack_frame.h" />
     <ClInclude Include="..\strview.h" />
+    <ClInclude Include="..\time.h" />
     <ClInclude Include="..\tokenizer.h" />
     <ClInclude Include="..\types.h" />
   </ItemGroup>
