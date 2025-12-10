@@ -267,26 +267,43 @@ static ast_node_t *parse_expr_statement(void) {
     return expr;
 }
 
-static ast_node_t *parse_variable_declaration(type_info_t *type_info /* can be NULL */) {  
+static ast_node_t *parse_variable_declaration(object_type_t *obj_type /* can be NULL */) {  
     ast_node_t *node = NULL;
+    derived_type_t derived_type;
 
-    if (!type_info) {
-        type_info = hashtab_get(&g_types, &current_token.lexeme);
-        if (!type_info) {
+    // Lookup object type from current token, if we haven't already got it.
+    if (!obj_type) {
+        obj_type = types_get_obj_type(&current_token.lexeme);
+        if (!obj_type) {
             return report_error("Undeclared type ", &current_token);
         }
     }
 
+    // Get type modifiers, eg array brackets
+    bool is_array = false;
     if (!tokenizer_next_token()) return NULL;
+    if (current_token.type == TOKEN_LBRACKET) {
+        if (!tokenizer_next_token()) return NULL;
+        if (current_token.type != TOKEN_RBRACKET) {
+            return report_error("Expected ]. Got ", &current_token);
+        }
+
+        is_array = true;
+    }
+
     if (current_token.type != TOKEN_IDENTIFIER)
-        return report_error("Expected identifier. Got ", &current_token);
+        return report_error("Expected identifier of [. Got ", &current_token);
 
     if (lscope_get(&current_token.lexeme))
         return report_error("Duplicate declaration of variable ", &current_token);
-    lscope_add(&current_token.lexeme, type_info);
+
+    // Store the variable and type
+    derived_type.object_type = *obj_type;
+    derived_type.is_array = is_array;
+    lscope_add(&current_token.lexeme, &derived_type);
 
     node = create_ast_node(NODE_VARIABLE_DECLARATION);
-    node->var_decl.type_info = type_info;
+    node->var_decl.type_info = obj_type;
     node->var_decl.identifier_name = current_token.lexeme;
 
     if (!tokenizer_next_token())
@@ -356,7 +373,7 @@ static ast_node_t *parse_compound_statement(void) {
     while (current_token.type != TOKEN_RBRACE) {
         ast_node_t *node = NULL;
 
-        type_info_t *this_type = hashtab_get(&g_types, &current_token.lexeme);
+        object_type_t *this_type = types_get_obj_type(&current_token.lexeme);
         if (this_type) {
             // We've found a variable declaration.
             node = parse_variable_declaration(this_type);

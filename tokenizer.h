@@ -23,9 +23,11 @@ typedef enum {
     TOKEN_RPAREN = ')',
     TOKEN_LBRACE = '{',
     TOKEN_RBRACE = '}',
-    TOKEN_COMMA = ',',
+    TOKEN_LBRACKET = '[',
+    TOKEN_RBRACKET = ']',
     TOKEN_LESS_THAN = '<',
     TOKEN_GREATER_THAN = '>',
+    TOKEN_COMMA = ',',
 } TokenType;
 
 typedef struct {

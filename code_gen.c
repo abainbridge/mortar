@@ -36,11 +36,11 @@ static void gen_assignment(ast_node_t *node) {
     unsigned offset = sframe_get_variable_offset(&left->identifier.name);
 
     // Get type of LHS
-    type_info_t *type = lscope_get(&left->identifier.name);
+    derived_type_t *type = lscope_get(&left->identifier.name);
     assert(type);
 
     // Copy RAX or AL to that address on the stack.
-    if (type->num_bytes == 1) {
+    if (type->object_type.num_bytes == 1) {
         asm_emit_mov_reg_to_stack(REG_AL, offset);
     }
     else {
@@ -68,10 +68,10 @@ static void gen_binary_op(ast_node_t *node) {
 
 // This function is only used to read from an identifier.
 static void gen_identifier(ast_node_t *node) {
-    type_info_t *type = lscope_get(&node->identifier.name);
+    derived_type_t *type = lscope_get(&node->identifier.name);
     assert(type);
     unsigned offset = sframe_get_variable_offset(&node->identifier.name);
-    if (type->num_bytes == 1)
+    if (type->object_type.num_bytes == 1)
         asm_emit_mov_stack_to_reg(REG_AL, offset);
     else
         asm_emit_mov_stack_to_reg(REG_RAX, offset);
