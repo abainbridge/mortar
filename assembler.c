@@ -105,54 +105,6 @@ void asm_emit_stack_dealloc(uint8_t num_bytes) {
     g_assembler.binary_size += 4;
 }
 
-void asm_emit_push_reg(asm_reg_t src_reg) {
-    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
-    switch (src_reg) {
-    case REG_RAX: c[0] = 0x50; break;
-    case REG_RCX: c[0] = 0x51; break;
-    }
-    g_assembler.binary_size += 1;
-}
-
-void asm_emit_pop_reg(asm_reg_t dst_reg) {
-    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
-    switch (dst_reg) {
-    case REG_RAX: c[0] = 0x58; break;
-    case REG_RCX: c[0] = 0x59; break;
-    }
-    g_assembler.binary_size += 1;
-}
-
-void asm_emit_push_imm_64(int64_t val) {
-    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
-
-    if (fits_in_s8(val)) {
-        // push imm8
-        c[0] = 0x6a;
-        c[1] = (uint8_t)val;
-        g_assembler.binary_size += 2;
-    }
-    else if (fits_in_s32(val)) {
-        // pushq
-        c[0] = 0x68;
-        uint32_t *d = (uint32_t *)(c + 1);
-        *d = (uint32_t)val;
-        g_assembler.binary_size += 5;
-    }
-    else {
-        // Need to use mov + push
-        // 
-        // 48 b8 XX XX XX XX XX XX XX XX    # mov rax, 0xXXXXXXXXXXXXXXXX
-        // 50                               # push rax
-        c[0] = 0x48;
-        c[1] = 0xb8;
-        uint64_t *d = (uint64_t *)(c + 2);
-        *d = val;
-        c[10] = 0x50; // push rax
-        g_assembler.binary_size += 11;
-    }
-}
-
 void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset) {
     uint8_t *c = g_assembler.binary + g_assembler.binary_size;
     int64_t neg_stack_offset = -((int64_t)stack_offset);
@@ -198,6 +150,14 @@ void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset) {
     c[3] = (uint8_t)neg_stack_offset;
 
     g_assembler.binary_size += 4;
+}
+
+void asm_emit_mov_reg_reg(asm_reg_t dst_reg, asm_reg_t src_reg) {
+    uint8_t *c = g_assembler.binary + g_assembler.binary_size;
+    c[0] = 0x48; // Prefix for 64-bit operation
+    c[1] = 0x89; // MOV r/m64, r64 opcode
+    c[2] = 0xc0 | (src_reg << 3) | dst_reg; // 0xc0 = ModR/M byte: register-direct mode
+    g_assembler.binary_size += 3;
 }
 
 void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val) {

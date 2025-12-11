@@ -16,9 +16,8 @@
 
 
 // Expression evaluation is done in the most brain-dead way possible. Each
-// operation reads its inputs from the stack, does the operation and writes
-// the result back to the stack. Everything is promoted to u64 before use
-// in the expression evaluation.
+// operation reads an input from rax and rcx and writes its result to rax.
+// Everything is promoted to u64 before use in the expression evaluation.
 
 
 static void gen_node(ast_node_t *node);
@@ -26,9 +25,6 @@ static void gen_node(ast_node_t *node);
 static void gen_assignment(ast_node_t *node) {
     ast_node_t *right = node->assignment.right;
     gen_node(right);
-
-    // Pop result of expression evaluation off the stack, into RAX.
-    asm_emit_pop_reg(REG_RAX);
 
     // Get address of LHS
     ast_node_t *left = node->assignment.left;
@@ -50,9 +46,8 @@ static void gen_assignment(ast_node_t *node) {
 
 static void gen_binary_op(ast_node_t *node) {
     gen_node(node->binary_op.left);
+    asm_emit_mov_reg_reg(REG_RCX, REG_RAX);
     gen_node(node->binary_op.right);
-    asm_emit_pop_reg(REG_RAX); // LHS in RAX
-    asm_emit_pop_reg(REG_RCX); // RHS in RCX
 
     switch (node->binary_op.op) {
     case TOKEN_PLUS:
@@ -62,8 +57,6 @@ static void gen_binary_op(ast_node_t *node) {
         printf("Unknown binary op\n");
         DBG_BREAK();
     }
-
-    asm_emit_push_reg(REG_RAX);
 }
 
 // This function is only used to read from an identifier.
@@ -75,14 +68,12 @@ static void gen_identifier(ast_node_t *node) {
         asm_emit_mov_stack_to_reg(REG_AL, offset);
     else
         asm_emit_mov_stack_to_reg(REG_RAX, offset);
-    asm_emit_push_reg(REG_RAX);
 }
 
 static void gen_compare(ast_node_t *node) {
     gen_node(node->compare_op.left);
+    asm_emit_mov_reg_reg(REG_RCX, REG_RAX);
     gen_node(node->compare_op.right);
-    asm_emit_pop_reg(REG_RAX); // LHS in RAX
-    asm_emit_pop_reg(REG_RCX); // RHS in RCX
     asm_emit_cmp_imm(REG_RAX, REG_RCX);
 }
 
@@ -95,9 +86,6 @@ static void gen_block(ast_node_t *node) {
 static void gen_string_literal(ast_node_t *node) {
     // Put string_addr in rax
     asm_emit_mov_imm_64(REG_RAX, (uint64_t)"Hello");// node->string_literal.val.data);
-
-    // Write address of literal to stack
-    asm_emit_push_reg(REG_RAX);
 }
 
 static void gen_function_call(ast_node_t *node) {
@@ -105,13 +93,14 @@ static void gen_function_call(ast_node_t *node) {
 
     // Visit each child node. Each visit will result in an integer/pointer on the stack.
     assert(node->func_call.parameters.size <= 4);
-    for (unsigned i = 0; i < node->func_call.parameters.size; i++)
-        gen_node(node->func_call.parameters.data[i]);
-
-    // Get parameters from the stack and into registers RCX, RDX, R8, R9.
     asm_reg_t dst_reg = REG_RCX;
-    for (unsigned i = 0; i < node->func_call.parameters.size; i++)
-        asm_emit_pop_reg(dst_reg + i);
+    for (unsigned i = 0; i < node->func_call.parameters.size; i++) {
+        gen_node(node->func_call.parameters.data[i]);
+        // todo
+        // Get parameters from the stack and into registers RCX, RDX, R8, R9.
+//         asm_emit_mov_reg_reg(dst_reg, REG_RAX);
+        dst_reg++;
+    }
 
     // Allocate 32-byte stack shadow space
     asm_emit_stack_alloc(32);
@@ -148,7 +137,7 @@ static void gen_while_loop(ast_node_t *node) {
 static void gen_node(ast_node_t *node) {
     switch (node->type) {
     case NODE_NUMBER:
-        asm_emit_push_imm_64(node->number.int_value);
+        asm_emit_mov_imm_64(REG_RAX, node->number.int_value);
         break;
     case NODE_IDENTIFIER:
         gen_identifier(node);

@@ -32,13 +32,11 @@ void asm_emit_func_exit(unsigned stack_frame_size); // size is used to patch the
 // Stack instructions
 void asm_emit_stack_alloc(uint8_t num_bytes);
 void asm_emit_stack_dealloc(uint8_t num_bytes);
-void asm_emit_push_reg(asm_reg_t src_reg); // Always uses 8-bytes of stack space
-void asm_emit_pop_reg(asm_reg_t dst_reg);
-void asm_emit_push_imm_64(int64_t val); // Trashes rax if val doesn't fit in an i32.
 void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset);
 void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset);
 
 // Non stack moves
+void asm_emit_mov_reg_reg(asm_reg_t dst_reg, asm_reg_t src_reg);
 void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val);
 
 // Function calls
