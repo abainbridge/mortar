@@ -4,7 +4,7 @@ start = time.time()
 
 a = 1
 
-while a < 1000000000:
+while a != 1000000000:
 #    print(a)
     a += 111
 

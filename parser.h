@@ -6,8 +6,7 @@
 // Headers from this project
 #include "darray.h"
 #include "tokenizer.h"
-
-typedef struct _type_info_t object_type_t;
+#include "types.h"
 
 typedef enum {
     NODE_NUMBER = 0,
@@ -71,7 +70,7 @@ typedef struct _ast_node_t {
         } func_call;
 
         struct {
-            object_type_t *type_info;
+            derived_type_t type_info;
             strview_t identifier_name;
         } var_decl;
 

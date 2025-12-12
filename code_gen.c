@@ -116,7 +116,11 @@ static void gen_function_call(ast_node_t *node) {
 }
 
 static void gen_variable_declaration(ast_node_t *node) {
-    sframe_add_variable(&node->var_decl.identifier_name, node->var_decl.type_info->num_bytes);
+    if (node->var_decl.type_info.is_array) {
+    }
+    else {
+        sframe_add_variable(&node->var_decl.identifier_name, node->var_decl.type_info.object_type.num_bytes);
+    }
 }
 
 static void gen_while_loop(ast_node_t *node) {

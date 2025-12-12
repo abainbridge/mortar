@@ -5,7 +5,7 @@ typedef struct _derived_type_t derived_type_t;
 
 void lscope_init(void);
 
-// Mallocs and copies type. Will be freed when lexical scope is destroyed (todo).
+// The AST owns the data passed in. This module only stores the pointers.
 void lscope_add(strview_t *identifier, derived_type_t *type);
 
 derived_type_t *lscope_get(strview_t *identifier);

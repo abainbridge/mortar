@@ -36,7 +36,8 @@ static void run_test(char const *source_code) {
 
 int main() {
 //    run_test("{ u8 x; x = 3; u64 y; y = 7; }");
-//    run_test("{ u8[] a; }");
+
+    run_test("{ u8[] a; }");
 
 //     run_test(
 //         "{"
@@ -49,14 +50,14 @@ int main() {
 //         "   }"
 //         "}");
 
-    run_test(
-        "{"
-        "   u64 a; a = 1;"
-        "   while (a != 1000000000) {"
-        //        "       puts(\"hello\");"
-        "       a = a + 111;"
-        "   }"
-        "}");
+//     run_test(
+//         "{"
+//         "   u64 a; a = 1;"
+//         "   while (a != 1000000000) {"
+//         //        "       puts(\"hello\");"
+//         "       a = a + 111;"
+//         "   }"
+//         "}");
 
 //     run_test(
 //         "{"

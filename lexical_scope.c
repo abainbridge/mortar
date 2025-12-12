@@ -14,9 +14,7 @@ void lscope_init(void) {
 }
 
 void lscope_add(strview_t *identifier, derived_type_t *type) {
-    derived_type_t *copied = malloc(sizeof(derived_type_t));
-    *copied = *type;
-    hashtab_put(&g_lscope, identifier, copied);
+    hashtab_put(&g_lscope, identifier, type);
 }
 
 derived_type_t *lscope_get(strview_t *identifier) {

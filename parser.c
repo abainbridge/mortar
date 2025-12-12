@@ -269,7 +269,6 @@ static ast_node_t *parse_expr_statement(void) {
 
 static ast_node_t *parse_variable_declaration(object_type_t *obj_type /* can be NULL */) {  
     ast_node_t *node = NULL;
-    derived_type_t derived_type;
 
     // Lookup object type from current token, if we haven't already got it.
     if (!obj_type) {
@@ -288,23 +287,20 @@ static ast_node_t *parse_variable_declaration(object_type_t *obj_type /* can be 
             return report_error("Expected ]. Got ", &current_token);
         }
 
+        if (!tokenizer_next_token()) return NULL;
         is_array = true;
     }
-
-    if (current_token.type != TOKEN_IDENTIFIER)
-        return report_error("Expected identifier of [. Got ", &current_token);
 
     if (lscope_get(&current_token.lexeme))
         return report_error("Duplicate declaration of variable ", &current_token);
 
-    // Store the variable and type
-    derived_type.object_type = *obj_type;
-    derived_type.is_array = is_array;
-    lscope_add(&current_token.lexeme, &derived_type);
-
     node = create_ast_node(NODE_VARIABLE_DECLARATION);
-    node->var_decl.type_info = obj_type;
+    node->var_decl.type_info.object_type = *obj_type;
+    node->var_decl.type_info.is_array = is_array;
     node->var_decl.identifier_name = current_token.lexeme;
+
+    // Store the variable and type
+    lscope_add(&current_token.lexeme, &node->var_decl.type_info);
 
     if (!tokenizer_next_token())
         goto error;
@@ -525,9 +521,16 @@ void parser_print_ast_node(ast_node_t *node, int indent_level) {
             parser_print_ast_node(node->func_call.parameters.data[i], indent_level + 2);
         break;
     case NODE_VARIABLE_DECLARATION:
-        printf("VARIABLE DECL: %.*s, num_bytes=%d\n", 
-            node->var_decl.identifier_name.len, node->var_decl.identifier_name.data,
-            node->var_decl.type_info->num_bytes);
+        if (node->var_decl.type_info.is_array) {
+            printf("VARIABLE DECL: %.*s, array, item num_bytes=%d\n",
+                node->var_decl.identifier_name.len, node->var_decl.identifier_name.data,
+                node->var_decl.type_info.object_type.num_bytes);
+        }
+        else {
+            printf("VARIABLE DECL: %.*s, num_bytes=%d\n",
+                node->var_decl.identifier_name.len, node->var_decl.identifier_name.data,
+                node->var_decl.type_info.object_type.num_bytes);
+        }
         break;
     case NODE_WHILE:
         printf("WHILE LOOP:\n");
