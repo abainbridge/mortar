@@ -57,7 +57,7 @@ typedef struct _ast_node_t {
         } unary_op;
 
         struct {
-            darray_t statements; // Array stores pointers to AstNodes
+            darray_t statements; // Array stores pointers to ast_node_ts
         } block;
 
         struct {
@@ -66,7 +66,7 @@ typedef struct _ast_node_t {
 
         struct {
             strview_t func_name;
-            darray_t parameters; // Array stores pointers to AstNodes
+            darray_t parameters; // Array stores pointers to ast_node_ts
         } func_call;
 
         struct {

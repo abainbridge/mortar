@@ -36,8 +36,6 @@ void asm_init(void) {
     g_assembler.binary = VirtualAlloc(NULL, 0x1000,
         MEM_COMMIT | MEM_RESERVE,
         PAGE_EXECUTE_READWRITE);
-
-    g_assembler.sub_rsp_idx = 0;
 }
 
 void asm_emit_func_entry(void) {
@@ -46,7 +44,7 @@ void asm_emit_func_entry(void) {
     // Function entry is always:
     //  push   rbp
     //  mov    rbp,rsp
-    //  sub    rsp,0x10 # Will be overwritten once we know the size of the stack frame
+    //  sub    rsp,??? # Will be overwritten once we know the size of the stack frame
     uint8_t *c = g_assembler.binary + g_assembler.binary_size;
     c[0] = 0x55; // push rbp
 
@@ -59,23 +57,18 @@ void asm_emit_func_entry(void) {
     c[6] = 0xec;
 
     // c[7] to c[10] store the amount to subtract from rsp. Leave
-    // uninitialized but store their location so that
-    // we can patch them with the correct value once the stack frame size
+    // uninitialized. We will patch them with the correct value once the stack frame size
     // is known.
-    g_assembler.sub_rsp_idx = g_assembler.binary_size + 7;
 
     g_assembler.binary_size += 11;
 }
 
-void asm_emit_func_exit(unsigned stack_frame_size) {
-    // First patch up the function entry using the stack frame size.
-    {
-        assert(g_assembler.sub_rsp_idx != 0);
-        uint32_t *c = (uint32_t *)(g_assembler.binary + g_assembler.sub_rsp_idx);
-        *c = stack_frame_size;
-        g_assembler.sub_rsp_idx = 0;
-    }
+void asm_patch_func_entry(unsigned start_of_code, unsigned stack_frame_num_bytes) {
+    uint32_t *c = (uint32_t *)(g_assembler.binary + start_of_code + 7);
+    *c = stack_frame_num_bytes;
+}
 
+void asm_emit_func_exit(void) {
     // Function exit is always:
     //  leave
     //  ret

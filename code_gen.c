@@ -180,7 +180,9 @@ void code_gen(ast_node_t *ast) {
     asm_init();
     sframe_init();
 
+    unsigned start_of_code = g_assembler.binary_size;
     asm_emit_func_entry();
     gen_node(ast);
-    asm_emit_func_exit(sframe_get_size());
+    asm_patch_func_entry(start_of_code, sframe_get_size());
+    asm_emit_func_exit();
 }

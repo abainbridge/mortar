@@ -17,8 +17,6 @@ typedef enum {
 typedef struct {
     uint8_t *binary;
     unsigned binary_size;
-
-    unsigned sub_rsp_idx; // Index of most recently written function entry
 } assembler_t;
 
 
@@ -26,8 +24,11 @@ typedef struct {
 extern assembler_t g_assembler;
 
 void asm_init(void);
+
+// Function entry/exit
 void asm_emit_func_entry(void);
-void asm_emit_func_exit(unsigned stack_frame_size); // size is used to patch the function entry we wrote earlier.
+void asm_patch_func_entry(unsigned func_entry_offset, unsigned stack_frame_num_bytes);
+void asm_emit_func_exit(void);
 
 // Stack instructions
 void asm_emit_stack_alloc(uint8_t num_bytes);
