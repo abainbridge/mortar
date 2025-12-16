@@ -44,13 +44,6 @@ static void emit_bytes(void *bytes, unsigned num_bytes) {
 }
 
 void asm_emit_func_entry(void) {
-    assert(g_assembler.sub_rsp_idx == 0);
-
-    // Function entry is always:
-    //  push   rbp
-    //  mov    rbp,rsp
-    //  sub    rsp,??? # Will be overwritten once we know the size of the stack frame
-
     u8 c[] = {
         0x55, // push rbp
 
@@ -76,10 +69,7 @@ void asm_patch_func_entry(unsigned start_of_code, unsigned stack_frame_num_bytes
 }
 
 void asm_emit_func_exit(void) {
-    // Function exit is always:
-    //  leave
-    //  ret
-    u8 c[] = { 0xc9, 0xc3 };
+    u8 c[] = { 0xc9, 0xc3 }; // emit leave; ret
     emit_bytes(c, 2);
 }
 
@@ -100,21 +90,15 @@ void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset) {
     if (!fits_in_s8(neg_stack_offset))
         DBG_BREAK();
 
-    u8 c[4];
     switch (src_reg) {
     case REG_RAX:
     case REG_RCX:
-        c[0] = 0x48; // Prefix for 64-bit operation
-        c[1] = 0x89; // Move reg to memory/register
-        c[2] = 0x45 + (src_reg << 3);
-        c[3] = (u8)neg_stack_offset;
-        emit_bytes(c, 4);
+        // mov qword ptr [rbp + stack_offset], src_reg
+        emit_bytes((u8[]){ 0x48, 0x89, 0x45 + (src_reg << 3), (u8)neg_stack_offset }, 4);
         break;
     case REG_AL:
-        c[0] = 0x88;
-        c[1] = 0x45;
-        c[2] = (u8)neg_stack_offset;
-        emit_bytes(c, 3);
+        // mov byte ptr [rbp + stack_offset], al
+        emit_bytes((u8[]){ 0x88, 0x45, (u8)neg_stack_offset }, 3);
     }
 }
 
@@ -151,6 +135,8 @@ void asm_emit_mov_reg_reg(asm_reg_t dst_reg, asm_reg_t src_reg) {
 void asm_emit_mov_imm_64(asm_reg_t dst_reg, u64 val) {
     u8 c[2] = { 0x48 };
     
+    // todo: optimized versions for immediate that fits in 8 bits, etc.
+
     switch (dst_reg) {
     case REG_RAX: c[1] = 0xb8; break;
     case REG_RCX: c[1] = 0xb9; break;
@@ -177,34 +163,37 @@ void asm_emit_cmp_imm(asm_reg_t lhs_reg, asm_reg_t rhs_reg) {
 }
 
 void asm_emit_jmp_imm(unsigned target_offset) {
+    int32_t rel_offset32; // VS2013 needs this to be here.
     i64 rel_offset = (i64)target_offset - (i64)g_assembler.binary_size - 5;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
 
-    int32_t rel_offset32 = (int32_t)rel_offset;
+    rel_offset32 = (int32_t)rel_offset;
     u8 c[] = { 0xe9 };
     emit_bytes(c, 1);
     emit_bytes(&rel_offset32, 4);
 }
 
 void asm_emit_je(unsigned target_offset) {
+    int32_t rel_offset32; // VS2013 needs this to be here.
     i64 rel_offset = (i64)target_offset - (i64)g_assembler.binary_size - 6;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
         
-    int32_t rel_offset32 = (int32_t)rel_offset;
+    rel_offset32 = (int32_t)rel_offset;
     u8 c[] = { 0x0f, 0x84 };
     emit_bytes(c, 2);
     emit_bytes(&rel_offset32, 4);
 }
 
 void asm_patch_je(unsigned offset_to_patch, unsigned target_offset) {
+    int32_t rel_offset32; // VS2013 needs this to be here.
     i64 rel_offset = (i64)target_offset - (i64)offset_to_patch - 6;
     u8 *c = g_assembler.binary + offset_to_patch;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
 
-    int32_t rel_offset32 = (int32_t)rel_offset;
+    rel_offset32 = (int32_t)rel_offset;
     memcpy(&c[2], &rel_offset32, 4);
 }
 
