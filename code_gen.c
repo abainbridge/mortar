@@ -85,7 +85,7 @@ static void gen_block(ast_node_t *node) {
 
 static void gen_string_literal(ast_node_t *node) {
     // Put string_addr in rax
-    asm_emit_mov_imm_64(REG_RAX, (uint64_t)"Hello");// node->string_literal.val.data);
+    asm_emit_mov_imm_64(REG_RAX, (u64)"Hello");// node->string_literal.val.data);
 }
 
 static void gen_function_call(ast_node_t *node) {
@@ -106,7 +106,7 @@ static void gen_function_call(ast_node_t *node) {
     asm_emit_stack_alloc(32);
 
     // Put address of func to call in rax
-    asm_emit_mov_imm_64(REG_RAX, (uint64_t)puts);
+    asm_emit_mov_imm_64(REG_RAX, (u64)puts);
 
     // call rax
     asm_emit_call_rax();

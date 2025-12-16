@@ -6,7 +6,6 @@
 
 // Standard headers
 #include <stdio.h>
-#include <stdint.h>
 
 
 typedef int(*two_in_one_out)(int, int);
@@ -37,18 +36,18 @@ static void run_test(char const *source_code) {
 int main() {
 //    run_test("{ u8 x; x = 3; u64 y; y = 7; }");
 
-    run_test("{ u8[] a; }");
+//    run_test("{ u8[] a; }");
 
-//     run_test(
-//         "{"
-//         "   u64 a; a = 1; u64 b; b = 1; u64 c;"
-//         "   while (a != 1134903170) {"
-// //        "       puts(\"hello\");"
-//         "       c = a + b;"
-//         "       a = b;"
-//         "       b = c;"
-//         "   }"
-//         "}");
+    run_test(
+        "{"
+        "   u64 a; a = 1; u64 b; b = 1; u64 c;"
+        "   while (a != 1134903170) {"
+//        "       puts(\"hello\");"
+        "       c = a + b;"
+        "       a = b;"
+        "       b = c;"
+        "   }"
+        "}");
 
 //     run_test(
 //         "{"

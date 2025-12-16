@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
 
 
@@ -24,11 +23,11 @@ enum {
 assembler_t g_assembler;
 
 
-static bool fits_in_s8(int64_t val) {
+static bool fits_in_s8(i64 val) {
     return (val <= INT8_MAX && val >= INT8_MIN);
 }
 
-static bool fits_in_s32(int64_t val) {
+static bool fits_in_s32(i64 val) {
     return (val < INT32_MAX || val >= INT32_MIN);
 }
 
@@ -39,7 +38,7 @@ void asm_init(void) {
 }
 
 static void emit_bytes(void *bytes, unsigned num_bytes) {
-    uint8_t *o = g_assembler.binary + g_assembler.binary_size;
+    u8 *o = g_assembler.binary + g_assembler.binary_size;
     memcpy(o, bytes, num_bytes);
     g_assembler.binary_size += num_bytes;
 }
@@ -52,7 +51,7 @@ void asm_emit_func_entry(void) {
     //  mov    rbp,rsp
     //  sub    rsp,??? # Will be overwritten once we know the size of the stack frame
 
-    uint8_t c[] = {
+    u8 c[] = {
         0x55, // push rbp
 
         0x48, // move rbp,rsp
@@ -72,7 +71,7 @@ void asm_emit_func_entry(void) {
 }
 
 void asm_patch_func_entry(unsigned start_of_code, unsigned stack_frame_num_bytes) {
-    uint32_t *c = (uint32_t *)(g_assembler.binary + start_of_code + 7);
+    u32 *c = (u32 *)(g_assembler.binary + start_of_code + 7);
     *c = stack_frame_num_bytes;
 }
 
@@ -80,48 +79,48 @@ void asm_emit_func_exit(void) {
     // Function exit is always:
     //  leave
     //  ret
-    uint8_t c[] = { 0xc9, 0xc3 };
+    u8 c[] = { 0xc9, 0xc3 };
     emit_bytes(c, 2);
 }
 
-void asm_emit_stack_alloc(uint8_t num_bytes) {
+void asm_emit_stack_alloc(u8 num_bytes) {
     // Emit sub rsp, num_bytes
-    uint8_t c[] = { 0x48, 0x83, 0xec, num_bytes };
+    u8 c[] = { 0x48, 0x83, 0xec, num_bytes };
     emit_bytes(c, 4);
 }
 
-void asm_emit_stack_dealloc(uint8_t num_bytes) {
+void asm_emit_stack_dealloc(u8 num_bytes) {
     // Emit add rsp, 0x20
-    uint8_t c[] = { 0x48, 0x83, 0xc4, num_bytes };
+    u8 c[] = { 0x48, 0x83, 0xc4, num_bytes };
     emit_bytes(c, 4);
 }
 
 void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset) {
-    int64_t neg_stack_offset = -((int64_t)stack_offset);
+    i64 neg_stack_offset = -((i64)stack_offset);
     if (!fits_in_s8(neg_stack_offset))
         DBG_BREAK();
 
-    uint8_t c[4];
+    u8 c[4];
     switch (src_reg) {
     case REG_RAX:
     case REG_RCX:
         c[0] = 0x48; // Prefix for 64-bit operation
         c[1] = 0x89; // Move reg to memory/register
         c[2] = 0x45 + (src_reg << 3);
-        c[3] = (uint8_t)neg_stack_offset;
+        c[3] = (u8)neg_stack_offset;
         emit_bytes(c, 4);
         break;
     case REG_AL:
         c[0] = 0x88;
         c[1] = 0x45;
-        c[2] = (uint8_t)neg_stack_offset;
+        c[2] = (u8)neg_stack_offset;
         emit_bytes(c, 3);
     }
 }
 
 void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset) {
-    uint8_t c[4];
-    int64_t neg_stack_offset = -((int64_t)stack_offset);
+    u8 c[4];
+    i64 neg_stack_offset = -((i64)stack_offset);
     if (!fits_in_s8(neg_stack_offset))
         DBG_BREAK();
 
@@ -138,19 +137,19 @@ void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset) {
         c[2] = 0x45; // Mod=01, Reg=000 (RAX), R/M=101 (RBP)
     }
 
-    c[3] = (uint8_t)neg_stack_offset;
+    c[3] = (u8)neg_stack_offset;
 
     emit_bytes(c, 4);
 }
 
 void asm_emit_mov_reg_reg(asm_reg_t dst_reg, asm_reg_t src_reg) {
-    uint8_t c[3] = { 0x48, 0x89 };
+    u8 c[3] = { 0x48, 0x89 };
     c[2] = 0xc0 | (src_reg << 3) | dst_reg; // 0xc0 = ModR/M byte: register-direct mode
     emit_bytes(c, 3);
 }
 
-void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val) {
-    uint8_t c[2] = { 0x48 };
+void asm_emit_mov_imm_64(asm_reg_t dst_reg, u64 val) {
+    u8 c[2] = { 0x48 };
     
     switch (dst_reg) {
     case REG_RAX: c[1] = 0xb8; break;
@@ -162,46 +161,46 @@ void asm_emit_mov_imm_64(asm_reg_t dst_reg, uint64_t val) {
 }
 
 void asm_emit_call_rax(void) {
-    uint8_t c[] = { 0xff, 0xd0 };
+    u8 c[] = { 0xff, 0xd0 };
     emit_bytes(c, 2);
 }
 
 void asm_emit_ret(void) {
-    uint8_t c[] = { 0xc3 };
+    u8 c[] = { 0xc3 };
     emit_bytes(c, 1);
 }
 
 void asm_emit_cmp_imm(asm_reg_t lhs_reg, asm_reg_t rhs_reg) {
-    uint8_t c[3] = { 0x48, 0x39, 0xc0 };
+    u8 c[3] = { 0x48, 0x39, 0xc0 };
     c[2] |= (lhs_reg << 3) | rhs_reg;
     emit_bytes(c, 3);
 }
 
 void asm_emit_jmp_imm(unsigned target_offset) {
-    int64_t rel_offset = (int64_t)target_offset - (int64_t)g_assembler.binary_size - 5;
+    i64 rel_offset = (i64)target_offset - (i64)g_assembler.binary_size - 5;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
 
     int32_t rel_offset32 = (int32_t)rel_offset;
-    uint8_t c[] = { 0xe9 };
+    u8 c[] = { 0xe9 };
     emit_bytes(c, 1);
     emit_bytes(&rel_offset32, 4);
 }
 
 void asm_emit_je(unsigned target_offset) {
-    int64_t rel_offset = (int64_t)target_offset - (int64_t)g_assembler.binary_size - 6;
+    i64 rel_offset = (i64)target_offset - (i64)g_assembler.binary_size - 6;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
         
     int32_t rel_offset32 = (int32_t)rel_offset;
-    uint8_t c[] = { 0x0f, 0x84 };
+    u8 c[] = { 0x0f, 0x84 };
     emit_bytes(c, 2);
     emit_bytes(&rel_offset32, 4);
 }
 
 void asm_patch_je(unsigned offset_to_patch, unsigned target_offset) {
-    int64_t rel_offset = (int64_t)target_offset - (int64_t)offset_to_patch - 6;
-    uint8_t *c = g_assembler.binary + offset_to_patch;
+    i64 rel_offset = (i64)target_offset - (i64)offset_to_patch - 6;
+    u8 *c = g_assembler.binary + offset_to_patch;
     if (!fits_in_s32(rel_offset))
         DBG_BREAK();
 
@@ -210,7 +209,7 @@ void asm_patch_je(unsigned offset_to_patch, unsigned target_offset) {
 }
 
 void asm_emit_arithmetic(asm_reg_t dst_reg, asm_reg_t src_reg, TokenType operation) {
-    uint8_t c[3] = { 0x48 };
+    u8 c[3] = { 0x48 };
     
     switch (operation) {
     case TOKEN_PLUS:

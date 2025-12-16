@@ -1,6 +1,8 @@
+// Own header
 #include "strview.h"
 
-#include <stdint.h>
+// This project's headers
+#include "common.h"
 
 
 bool strview_cmp_cstr(strview_t const *a, char const *b) {
@@ -16,7 +18,7 @@ bool strview_to_int(strview_t *sv, int *out_value) {
 
     bool neg = false;
     size_t i = 0;
-    int64_t value = 0; // use wider type to detect overflow
+    i64 value = 0; // use wider type to detect overflow
     char const *s = sv->data;
     size_t len = sv->len;
 
