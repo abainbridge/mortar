@@ -30,14 +30,17 @@ void sframe_init(void) {
     g_sframe.current_offset = 0;
 }
 
-void sframe_add_variable(strview_t *name, unsigned num_bytes) {
+unsigned sframe_add_variable(strview_t *name, unsigned num_bytes) {
     if (g_sframe.num_items >= MAX_SFRAME_ITEMS)
         FATAL_ERROR("Too many items in current stack frame. Limit is %d\n", MAX_SFRAME_ITEMS);
 
+    unsigned rv = g_sframe.current_offset;
     g_sframe.items[g_sframe.num_items].name = name;
     g_sframe.items[g_sframe.num_items].offset = g_sframe.current_offset;
     g_sframe.num_items++;
     g_sframe.current_offset += num_bytes;
+
+    return rv;
 }
 
 unsigned sframe_get_variable_offset(strview_t *name) {

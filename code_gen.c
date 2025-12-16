@@ -116,11 +116,14 @@ static void gen_function_call(ast_node_t *node) {
 }
 
 static void gen_variable_declaration(ast_node_t *node) {
-    if (node->var_decl.type_info.is_array) {
-    }
-    else {
-        sframe_add_variable(&node->var_decl.identifier_name, node->var_decl.type_info.object_type.num_bytes);
-    }
+    unsigned num_bytes;
+    if (node->var_decl.type_info.is_array)
+        num_bytes = sizeof(darray_t);
+    else
+        num_bytes = node->var_decl.type_info.object_type.num_bytes;
+
+    unsigned offset = sframe_add_variable(&node->var_decl.identifier_name, num_bytes);
+    asm_emit_zero_stack_range(offset, num_bytes);
 }
 
 static void gen_while_loop(ast_node_t *node) {

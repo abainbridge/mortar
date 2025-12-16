@@ -86,44 +86,68 @@ void asm_emit_stack_dealloc(u8 num_bytes) {
 }
 
 void asm_emit_mov_reg_to_stack(asm_reg_t src_reg, unsigned stack_offset) {
-    i64 neg_stack_offset = -((i64)stack_offset);
-    if (!fits_in_s8(neg_stack_offset))
+    i64 num_bytes = (src_reg == REG_AL ? 1 : 8);
+    i64 relative_addr = -(i64)stack_offset - num_bytes;
+    if (!fits_in_s8(relative_addr))
         DBG_BREAK();
 
     switch (src_reg) {
     case REG_RAX:
     case REG_RCX:
         // mov qword ptr [rbp + stack_offset], src_reg
-        emit_bytes((u8[]){ 0x48, 0x89, 0x45 + (src_reg << 3), (u8)neg_stack_offset }, 4);
+        emit_bytes((u8[]){ 0x48, 0x89, 0x45 + (src_reg << 3), (i8)relative_addr }, 4);
         break;
     case REG_AL:
         // mov byte ptr [rbp + stack_offset], al
-        emit_bytes((u8[]){ 0x88, 0x45, (u8)neg_stack_offset }, 3);
+        emit_bytes((u8[]){ 0x88, 0x45, (i8)relative_addr}, 3);
     }
 }
 
 void asm_emit_mov_stack_to_reg(asm_reg_t dst_reg, unsigned stack_offset) {
-    u8 c[4];
-    i64 neg_stack_offset = -((i64)stack_offset);
-    if (!fits_in_s8(neg_stack_offset))
+    i64 num_bytes = (dst_reg == REG_AL ? 1 : 8);
+    i64 relative_addr = -(i64)stack_offset - num_bytes;
+    if (!fits_in_s8(relative_addr))
         DBG_BREAK();
 
-    if (dst_reg == REG_AL) {
-        // Copy 8-bit value from stack to 64-bit register (Dest is RAX not AL)
-        c[0] = 0xf;
-        c[1] = 0xb6;
-        c[2] = 0x45;
+    switch (dst_reg) {
+    case REG_RAX:
+        // mov rax, qword ptr [rbp + relative_addr]
+        emit_bytes((u8[]){ 0x48, 0x8b, 0x45, (i8)relative_addr }, 4);
+        break;
+    case REG_AL:
+        // mov al, byte ptr [rbp + relative_addr]
+        emit_bytes((u8[]){ 0xf, 0xb6, 0x45, (i8)relative_addr }, 4);
+        break;
     }
-    else {
-        // Copy 64-bit value from stack to 64-bit register
-        c[0] = 0x48; // Prefix for 64-bit operation
-        c[1] = 0x8b; // Move memory/register to register
-        c[2] = 0x45; // Mod=01, Reg=000 (RAX), R/M=101 (RBP)
+}
+
+void asm_emit_zero_stack_range(unsigned stack_offset, unsigned num_bytes) {
+    i64 relative_addr = -(i64)stack_offset - (i64)num_bytes;
+    if (!fits_in_s8(relative_addr))
+        DBG_BREAK();
+
+    switch (num_bytes) {
+    case 1:
+        // xor cl, cl
+        emit_bytes((u8[]){ 0x30, 0xc9 }, 2);
+        // mov byte ptr [rbp - stack_offset], cl
+        emit_bytes((u8[]){ 0x88, 0x4d, (i8)relative_addr }, 3);
+        break;
+    case 8:
+        // xor rcx, rcx
+        emit_bytes((u8[]){ 0x48, 0x31, 0xc9 }, 3);
+        // mov qword ptr [rbp - stack_offset], rcx
+        emit_bytes((u8[]){ 0x48, 0x89, 0x45, (i8)relative_addr }, 4);
+        break;
+    case 16:
+        // pxor xmm0, xmm0
+        emit_bytes((u8[]){ 0x66, 0x0f, 0xef, 0xc0 }, 4);
+        // movdqu [rbp - stack_offset], xmm0
+        emit_bytes((u8[]){ 0xf3, 0x0f, 0x7f, 0x45, (i8)relative_addr }, 5);
+        break;
+    default:
+        DBG_BREAK();
     }
-
-    c[3] = (u8)neg_stack_offset;
-
-    emit_bytes(c, 4);
 }
 
 void asm_emit_mov_reg_reg(asm_reg_t dst_reg, asm_reg_t src_reg) {
