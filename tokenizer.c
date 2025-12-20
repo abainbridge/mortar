@@ -136,19 +136,23 @@ bool tokenizer_next_token(void) {
         }
         next_char();
         break;
-    case '+': current_token.type = TOKEN_PLUS; next_char(); break;
-    case '-': current_token.type = TOKEN_MINUS; next_char(); break;
-    case '*': current_token.type = TOKEN_MULTIPLY; next_char(); break;
-    case '/': current_token.type = TOKEN_DIVIDE; next_char(); break;
-    case '(': current_token.type = TOKEN_LPAREN; next_char(); break;
-    case ')': current_token.type = TOKEN_RPAREN; next_char(); break;
-    case '{': current_token.type = TOKEN_LBRACE; next_char(); break;
-    case '}': current_token.type = TOKEN_RBRACE; next_char(); break;
-    case '[': current_token.type = TOKEN_LBRACKET; next_char(); break;
-    case ']': current_token.type = TOKEN_RBRACKET; next_char(); break;
-    case '<': current_token.type = TOKEN_LESS_THAN; next_char(); break;
-    case '>': current_token.type = TOKEN_GREATER_THAN; next_char(); break;
-    case ',': current_token.type = TOKEN_COMMA; next_char(); break;
+    case '+':
+    case '-':
+    case '*':
+    case '/':
+    case '(':
+    case ')':
+    case '{':
+    case '}':
+    case '[':
+    case ']':
+    case '<':
+    case '>':
+    case ',': 
+    case '.': 
+        current_token.type = *c;
+        next_char();
+        break;
     default:
         printf("Unexpected character '%c' at line %d, column %d\n", 
             *c, line, column);

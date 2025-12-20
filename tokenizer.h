@@ -28,6 +28,7 @@ typedef enum {
     TOKEN_LESS_THAN = '<',
     TOKEN_GREATER_THAN = '>',
     TOKEN_COMMA = ',',
+    TOKEN_DOT = '.',
 } TokenType;
 
 typedef struct {
