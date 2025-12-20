@@ -15,5 +15,5 @@ typedef struct {
 } darray_t;
 
 
-void darray_insert(darray_t* arr, ast_node_t* element);
+void darray_append(darray_t* arr, ast_node_t* element);
 void darray_free(darray_t* arr);

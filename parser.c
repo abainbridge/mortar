@@ -75,7 +75,7 @@ static ast_node_t *parse_func_call(Token const *name) {
         while (current_token.type != TOKEN_RPAREN) {
             ast_node_t *expr = parse_expression();
             if (!expr) goto error;
-            darray_insert(&rv->func_call.parameters, expr);
+            darray_append(&rv->func_call.parameters, expr);
 
             if (current_token.type == TOKEN_COMMA) {
                 if (!tokenizer_next_token()) goto error;
@@ -261,7 +261,7 @@ static ast_node_t *parse_expr_statement(void) {
 
     if (current_token.type != TOKEN_SEMICOLON || !tokenizer_next_token()) {
         parser_free_ast(expr);
-        return report_error("Expected semicolon. Got ", &current_token);
+        return report_error("Expected semicolon after expression. Got ", &current_token);
     }
 
     return expr;
@@ -306,7 +306,7 @@ static ast_node_t *parse_variable_declaration(object_type_t *obj_type /* can be 
         goto error;
 
     if (current_token.type != TOKEN_SEMICOLON) {
-        report_error("Expected semicolon. Got ", &current_token);
+        report_error("Expected semicolon after variable declaration. Got ", &current_token);
         goto error;
     }
 
@@ -381,7 +381,7 @@ static ast_node_t *parse_compound_statement(void) {
         
         if (!node) goto error;
 
-        darray_insert(&compound_stmt->block.statements, node);
+        darray_append(&compound_stmt->block.statements, node);
     }
 
     if (!tokenizer_next_token()) goto error;
