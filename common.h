@@ -1,7 +1,9 @@
 #pragma once
 
 // Platform headers
+#ifdef _MSC_VER
 #include <crtdbg.h>
+#endif
 
 // Standard headers
 #include <stdint.h>
@@ -9,7 +11,12 @@
 #include <stdlib.h>
 
 #define FATAL_ERROR(msg, ...) { printf(msg "\n", ##__VA_ARGS__); exit(-1); }
-#define DBG_BREAK _CrtDbgBreak
+
+#ifdef _MSC_VER
+#define DBG_BREAK() _CrtDbgBreak()
+#else
+#define DBG_BREAK() __asm__("int3")
+#endif
 
 typedef uint8_t u8;
 typedef int8_t i8;
